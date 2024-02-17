@@ -74,7 +74,7 @@ gof_ds(wtd.hr, main = "Hazard-rate")
 dev.off()
 
 # Hazard-rate model no adjustments
-wtd.hr.null <- ds(data = wtd.binary.dat.sept8, 
+wtd.hr.null.sept8 <- ds(data = wtd.binary.dat.sept8, 
                   transect = "line", # point or line 
                   key = "hr", # detection model: Half-normal (hn), hazard-rate (hr), uniform (unif)
                   dht_group=FALSE, # consider group sizes to be size 1 (TRUE), default is FALSE, abundance of individuals is calculated
@@ -83,10 +83,22 @@ wtd.hr.null <- ds(data = wtd.binary.dat.sept8,
                   )
 
 # Goodness of fit
-gof_ds(wtd.hr.null, main = "Hazard-rate Null")
+gof_ds(wtd.hr.null.sept8, main = "Hazard-rate Null")
 
 # Model summary
-summary(wtd.hr.null)
+summary(wtd.hr.null.sept8)
+
+
+# ploting detection function
+par(mfrow=c(2,1))
+cutpoints <- c(0,10,20,40,100)
+plot(wtd.hr.null.sept8, breaks=cutpoints, main="Hazard-rate model - Null")
+gof_ds(wtd.hr.null.sept8, main = "Hazard-rate Null")
+
+of_ds(wtd.hr.null.sept8, main = "Hazard-rate Null")
+
+
+
 
 # Hazard-rate model simple polynomial adjustment
 wtd.hr.poly<- ds(data = wtd.binary.dat.sept8, 
@@ -141,9 +153,14 @@ knitr::kable(summarize_ds_models(wtd.hr.null, wtd.hr.gs),
 
 
 # ploting detection function
-par(mfrow=c(1,2))
+par(mfrow=c(2,1))
 cutpoints <- c(0,10,20,40,100)
 plot(wtd.hr.null, breaks=cutpoints, main="Hazard-rate model - Null")
+gof_ds(wtd.hr.null, main = "Hazard-rate Null")
+
+
+
+
 plot(wtd.hr.gs, breaks=cutpoints, main="Hazard-rate model ~ Group Size")
                         
                           

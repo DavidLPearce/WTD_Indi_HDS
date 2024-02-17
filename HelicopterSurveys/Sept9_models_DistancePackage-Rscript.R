@@ -203,9 +203,9 @@ gof_ds(wtd.hr.poly.sept9, main = "Hazard-rate Null")
 gof_ds(wtd.hr.gs.sept9, main = "Hazard-rate ~ Group Size")
 
 
-
-
-
+par(mfrow=c(2,1))
+plot(wtd.hr.null.sept9, breaks=cutpoints, main="Hazard-rate model - Null")
+gof_ds(wtd.hr.poly.sept9, main = "Hazard-rate Null")
 
 
 
