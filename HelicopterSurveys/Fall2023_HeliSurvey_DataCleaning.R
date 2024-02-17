@@ -142,14 +142,18 @@
 # 
 # 
 
-wtd.dat.gis <- read.csv("./HelicopterSurveys/HelicopterSurvey_data/Fall2023_HelicopterSurveys.csv")
+wtd.dat.gis <- read.csv("./Data/HelicopterSurvey_data/Fall2023_HelicopterSurveys.csv")
+View(wtd.dat.gis)
+
 names(wtd.dat.gis)[50] <- "Sample.Label" # Renaming transect number to sample label, from Distance: Sample.Label - point transect identifier
 names(wtd.dat.gis)[51] <- "Effort" # renaming transect length to effort, from Distance: survey effort
 wtd.dat.gis$Study.Area <- "La Copita Ranch" # adding a column for study area
 wtd.dat.gis$ObservationNumber <- 1:NROW(wtd.dat.gis)
-wtd.dat.gist$Group.size <- rowSums(wtd.dat.gis[ ,c(30:35,)])
+wtd.dat.gis$Group.size <- rowSums(wtd.dat.gis[ ,c(30:35)])
+wtd.dat.gis$date <- as.Date(wtd.dat.gis$date, format = "%m/%d/%Y") # Converting date column to just date and no time                                    
 
-View(wtd.dat.gis)
+
+
 
 
 # Making a binary dataframe from the binomial dataframe
