@@ -44,7 +44,7 @@ write.csv(HSwinter24_dat, "Helisurveys_Winter2023_snapped.csv")
 
 
 # Reading in survey data with transect info
-HSwinter24_dat <- read.csv("C:/Users/davep/OneDrive - Texas A&M University/Rprojects/CH1_WTD_Abundance/Data/HelicopterSurvey_data/Winter2024_HelicopterSurveys_snapped_GIS.csv")
+HSwinter24_dat <- read.csv("./Data/HelicopterSurvey_data/Raw_Survey_Data/Winter2024_HelicopterSurveys_snapped_GIS.csv")
 
 # adding a column for observation number
 HSwinter24_dat$Observation_Number <- 1:NROW(HSwinter24_dat)
@@ -178,7 +178,7 @@ HSwinter24_binary_dat <- pmap_dfr(HSwinter24_dat,
                                         Lat = Lat,
                                         Long = Long,
                                         Transect_ID = Transect_ID,
-                                        Transect_ID = Transect_ID,
+                                        Transect_Length = Transect_Length,
                                         Flight_Path  = Flight_Path , 
                                         Date = Date ,
                                         Males = c( rep(1, Males),
@@ -199,5 +199,5 @@ HSwinter24_binary_dat <- pmap_dfr(HSwinter24_dat,
                            
 #
 # Save the cleaned data as an RDS file
-saveRDS(HSwinter24_binary_dat, file = "C:/Users/davep/OneDrive - Texas A&M University/Rprojects/CH1_WTD_Abundance/Data/HelicopterSurvey_data/HSwinter24_binary_data.rds")
+saveRDS(HSwinter24_binary_dat, file = "./Data/HelicopterSurvey_data/Cleaned_Survey_Data/HSwinter24_binary_data.rds")
 
