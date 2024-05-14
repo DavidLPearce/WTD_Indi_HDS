@@ -332,67 +332,58 @@ head(heli_sub_dat)
 
 
 ################################
-transect_id = 1   
-i = 1 
-j = 1
-j = 2
+
+library(purrr) 
+library(tidyr) 
+library(dplyr)
 
 
-# Initialize an empty dataframe to store expanded data
-heli_bin_dat <- data.frame()
+unique(colnames(heli_dat_clean))
 
-# object for the total number of rows in new dataframe
-tot_rows <- sum(heli_sub_dat$Group_size)
+heli_sub_dat <- heli_dat_clean[, c(1:4, 6:8,13, 16, 18:25)]
 
-# Iterate through all lines in new expanded dataframe adding data from heli_sub_dat
-for (transect_id in unique(heli_sub_dat$Transect_ID)) {
-  
-  # Subset the data for the current Transect_ID
-  subset_data <- heli_sub_dat[heli_sub_dat$Transect_ID == transect_id, ]
-  
-  # Calculate the maximum number of observations for this Transect_ID
-  max_observation_number <- max(sum(subset_data$Group_size))
-  
-  # Iterate over each row of the subset
-  for (i in 1:nrow(subset_data)) {
-    
-    # Select the current row
-    row <- subset_data[i, ]  
-    
-    # Get the Group_size value for the current row
-    group_size <- row$Group_size 
-    
-    # Create a copy of the current row
-    new_row <- row 
-    
-    # Formating data to DD.MM.YYYY
-    formatted_date <- gsub("/", ".", row$Date)
-    
-    # Create new rows based on Group_size
-    for (j in 1:group_size) {
-      
-      rownames(new_row) <- sum(subset_data$Group_size)
-      
-      # Update the Observation_Number
-      new_row$Observation_Number <- j + max_observation_number * (i - 1)
-      
-      # Create Unique_ID
-      new_row$Unique_ID <- paste0(formatted_date, "_", row$Transect_ID, ".", new_row$Observation_Number)
-      
-      # Adding the new row to the dataframe
-      heli_bin_dat <- rbind(heli_bin_dat, new_row)
-      
-      # Reset row names for heli_bin_dat
-      rownames(heli_bin_dat) <- NULL
-      
-      # Reset row names for new_row
-      tot_rows <- (tot_rows - 1)
-    }
-  }
-}
-
-
-
+heli_bin_dat <- pmap_dfr(heli_sub_dat, 
+                                  function(
+                                           Study_Area, # Study area survey took place 
+                                           Area_ha, # Size of study area in hectares
+                                           Date, # date of observation
+                                           Transect_ID, # Transect number
+                                           Transect_Length_km, # Length of the transect in kilometers
+                                           geometry,  # coordinates of observation
+                                           Female,  # Does
+                                           Fawn,  # Juveniles
+                                           Males , # Bucks
+                                           Unknown, # Unknown deer
+                                           Perpendicular_Distance, # Perpendicular distance calculated
+                                           Group_size, # Size of the group observed 
+                                           Survey_Time, # time survey was conducted
+                                           Ground, # proportion of ground points
+                                           Low_Veg, # proportion of low vegetation points
+                                           Med_Veg, # proportion of medium vegetation points
+                                           High_veg # proportion of high vegetation points
+                                  ){                              
+                                    data.frame(
+                                               Study_Area = Study_Area,
+                                               Area_ha = Area_ha,
+                                               Date = Date,
+                                               Transect_ID = Transect_ID,
+                                               Transect_Length_km = Transect_Length_km,
+                                               geometry = geometry,
+                                               
+                                               Males = c( rep(1, Males),
+                                                          rep(0, Group_size - Males)),
+                                               
+                                               Female = c( rep(1, Female),
+                                                           rep(0, Group_size - Female)),
+                                               
+                                               Fawn = c( rep(1, Fawn),
+                                                         rep(0, Group_size - Fawn)),
+                                               
+                                               Unknown = c( rep(1, Unknown),
+                                                            rep(0, Group_size - Unknown)),
+                                               
+                                               Perpendicular_Distance = Perpendicular_Distance,
+                                               Group_size = Group_size)})
 
 
 
