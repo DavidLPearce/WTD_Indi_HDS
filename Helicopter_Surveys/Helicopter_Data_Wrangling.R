@@ -307,12 +307,21 @@ plot(sub_las, color = "Classification", bg = "white", size = 5)
 
 
 
-## Creating a subsetted dataset of just sex and age structuring data 
+## -------------------------------------------------
+##           Population Structure Data 
+## -------------------------------------------------       
 
+
+## Creating a subsetted dataset of just sex and age structuring data 
 structure_dat <- heli_dat_clean[, c(1:13)]
 
 # saving as a .rds file for analsis later on
 saveRDS(structure_dat, file = "./Data/Survey_Data/Helicopter_Data/Structure_Data.rds")
+
+
+## -------------------------------------------------
+##           Individual Observation Data 
+## -------------------------------------------------       
 
 
 ## Creating a dataframe where each observation of multiple individuals 
@@ -331,147 +340,96 @@ head(heli_sub_dat)
 ## has an observation in a distance bin. This allows for observation level covariates to be retained
 
 
-################################
-
-library(purrr) 
-library(tidyr) 
-library(dplyr)
-
-
-unique(colnames(heli_dat_clean))
-
-heli_sub_dat <- heli_dat_clean[, c(1:4, 6:8,13, 16, 18:25)]
-
-heli_bin_dat <- pmap_dfr(heli_sub_dat, 
-                                  function(
-                                           Study_Area, # Study area survey took place 
-                                           Area_ha, # Size of study area in hectares
-                                           Date, # date of observation
-                                           Transect_ID, # Transect number
-                                           Transect_Length_km, # Length of the transect in kilometers
-                                           geometry,  # coordinates of observation
-                                           Female,  # Does
-                                           Fawn,  # Juveniles
-                                           Males , # Bucks
-                                           Unknown, # Unknown deer
-                                           Perpendicular_Distance, # Perpendicular distance calculated
-                                           Group_size, # Size of the group observed 
-                                           Survey_Time, # time survey was conducted
-                                           Ground, # proportion of ground points
-                                           Low_Veg, # proportion of low vegetation points
-                                           Med_Veg, # proportion of medium vegetation points
-                                           High_veg # proportion of high vegetation points
-                                  ){                              
-                                    data.frame(
-                                               Study_Area = Study_Area,
-                                               Area_ha = Area_ha,
-                                               Date = Date,
-                                               Transect_ID = Transect_ID,
-                                               Transect_Length_km = Transect_Length_km,
-                                               geometry = geometry,
-                                               
-                                               Males = c( rep(1, Males),
-                                                          rep(0, Group_size - Males)),
-                                               
-                                               Female = c( rep(1, Female),
-                                                           rep(0, Group_size - Female)),
-                                               
-                                               Fawn = c( rep(1, Fawn),
-                                                         rep(0, Group_size - Fawn)),
-                                               
-                                               Unknown = c( rep(1, Unknown),
-                                                            rep(0, Group_size - Unknown)),
-                                               
-                                               Perpendicular_Distance = Perpendicular_Distance,
-                                               Group_size = Group_size)})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##################################################
-
 # Initialize an empty dataframe to store expanded data
-heli_bin_dat <- data.frame(matrix(ncol = 12, nrow = sum(heli_sub_dat$Group_size)))
+heli_bin_dat <- data.frame()
 
-# Iterate through all lines in new expanded dataframe adding data from heli_sub_dat
-for (line in 1:NROW(heli_bin_dat)) {
+# Object for indexing
+line <- 1
 
+
+# Iterate over unique dates
+for (date in unique(heli_sub_dat$Date)) {
+  
+  # Subset the data for the current date
+  date_subset <- heli_sub_dat[heli_sub_dat$Date == date, ]
+  
   # Iterate over unique Transect_IDs
-  for (transect_id in unique(heli_sub_dat$Transect_ID)) {
+  for (transect_id in unique(date_subset$Transect_ID)) {
     
     # Subset the data for the current Transect_ID
-    subset_data <- heli_sub_dat[heli_sub_dat$Transect_ID == transect_id, ]
+    transect_subset <- date_subset[date_subset$Transect_ID == transect_id, ]
     
-    # Calculate the maximum number of observations for this Transect_ID
-    max_observation_number <- max(sum(subset_data$Group_size))
-  
+    # Adding in a group identifier
+    transect_subset$GroupID <- 1:NROW(transect_subset)
+    
+
   # Iterate over each row of the subset
-  for (i in 1:nrow(subset_data)) {
+  for (i in 1:nrow(transect_subset)) {
     
     # Select the current row
-    row <- subset_data[i, ]  
+    row <- transect_subset[i, ]  
 
     # Formating data to DD.MM.YYYY
     formatted_date <- gsub("/", ".", row$Date)
     
-    # Get the Group_size value for the current row
+    # Get the Group_size value for the current row for looping
     group_size <- row$Group_size 
     
-    # Create a copy of the current row
-    new_row <- row 
-        
+    # Group size object for id of individual in group
+    num_in_group <- group_size
+
     # Create new rows based on Group_size
     for (j in 1:group_size) {
         
-      # Update the Observation_Number
-      new_row$Observation_Number <- j + max_observation_number * (i - 1)
+      # Adding an observation number
+      row$num_in_group <- num_in_group
       
       # Create Unique_ID
-      new_row$Unique_ID <- paste0(formatted_date, "_", row$Transect_ID, ".", new_row$Observation_Number)
+      row$Unique_ID <- paste0(formatted_date, "_", row$Transect_ID, ".", 
+                              row$GroupID, ".", row$num_in_group)
       
       # Adding to new data frame
-      heli_bin_dat[line, 'Study_Area'] <- new_row[1, 'Study_Area']
-      heli_bin_dat[line, 'Area_ha'] <- new_row[1, 'Area_ha']
-      heli_bin_dat[line, 'Unique_ID'] <- new_row[1, 'Unique_ID']
-      heli_bin_dat[line, 'Transect_Length_km'] <- new_row[1, 'Transect_Length_km']
-      heli_bin_dat[line, 'geometry'] <- new_row[1, 'geometry']
-      heli_bin_dat[line, 'Date'] <- new_row[1, 'Date']
-      heli_bin_dat[line, 'Perpendicular_Distance'] <- new_row[1, 'Perpendicular_Distance']
-      heli_bin_dat[line, 'Group_size'] <- new_row[1, 'Group_size']
-      heli_bin_dat[line, 'Survey_Time'] <- new_row[1, 'Survey_Time']
-      heli_bin_dat[line, "Ground"] <- new_row[1, 'Ground']
-      heli_bin_dat[line, 'Med_Veg'] <- new_row[1, 'Med_Veg']
-      heli_bin_dat[line, 'High_veg'] <- new_row[1, 'High_veg']
+      heli_bin_dat[line, 'Study_Area'] <- row[1, 'Study_Area']
+      heli_bin_dat[line, 'Area_ha'] <- row[1, 'Area_ha']
+      heli_bin_dat[line, 'Unique_ID'] <- row[1, 'Unique_ID']
+      heli_bin_dat[line, 'Transect_ID'] <- row[1, 'Transect_ID']
+      heli_bin_dat[line, 'Transect_Length_km'] <- row[1, 'Transect_Length_km']
+      heli_bin_dat[line, 'geometry'] <- row[1, 'geometry']
+      heli_bin_dat[line, 'Date'] <- row[1, 'Date']
+      heli_bin_dat[line, 'Distance'] <- row[1, 'Perpendicular_Distance']
+      heli_bin_dat[line, 'Group_size'] <- row[1, 'Group_size']
+      heli_bin_dat[line, 'Survey_Time'] <- row[1, 'Survey_Time']
+      heli_bin_dat[line, "Ground"] <- row[1, 'Ground']
+      heli_bin_dat[line, 'Med_Veg'] <- row[1, 'Med_Veg']
+      heli_bin_dat[line, 'High_veg'] <- row[1, 'High_veg']
+      
+      # Reduce the group size by 1 after naming
+      num_in_group <- num_in_group - 1
+      
+      # Increment line index
+      line <- line + 1
 
       
     }
   }
+ }
 }
-}   
-  
+
+# Ordering dataframe by date and then unique ID
+heli_bin_dat <- heli_bin_dat[order(as.Date(heli_bin_dat$Date, format = "%m/%d/%Y"), heli_bin_dat$Unique_ID), ]
+
+# Take a look
+View(heli_bin_dat)
+
+
+# Exporting the data as a rds file
+# saving as a .rds file for analysis later on
+saveRDS(heli_bin_dat, file = "./Data/Survey_Data/Helicopter_Data/Heli_Dist_Data.rds")
+
+
+
+
+
+
 
 
