@@ -193,7 +193,6 @@ actual_coords <- as.data.frame(actual_coords)
 actual_coords <- sf::st_as_sf(actual_coords, coords = c("lon", "lat"), crs = 4326)
 actual_coords_proj <- sf::st_transform(actual_coords, crs = 32614)
 
-
 # Take a look
 head(snapped_coords)
 head(actual_coords)

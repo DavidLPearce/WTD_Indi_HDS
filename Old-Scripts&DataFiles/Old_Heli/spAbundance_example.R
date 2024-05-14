@@ -42,6 +42,7 @@ dat.EATO$y <- dat.EATO$y[sp.names == "EATO", , ]
 # Number of EATO individuals observed at each site
 apply(dat.EATO$y, 1, sum)
 str(dat.EATO)
+head(dat.EATO)
 
 #--------------------------------------
 #
