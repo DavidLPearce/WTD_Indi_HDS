@@ -29,6 +29,12 @@ boundary <- st_read("./Data/Spatial_Data/La_Copita_Boundary")
 # Read the CSV file
 heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Helicopter_Survey_Data-Rolling5.13.24.csv")
 
+# Disable scientific notation
+options(scipen = 9999)
+
+# set seed
+set.seed(123)
+
 
 ## ------------------------------------------------------------------------------
 ##
@@ -243,9 +249,6 @@ distance <- heli_dat_clean %>%
 heli_dat_clean$Perpendicular_Distance <- distance$distance
 heli_dat_clean$Perpendicular_Distance <- as.numeric(heli_dat_clean$Perpendicular_Distance)
 
-# Disable scientific notation
-options(scipen = 9999)
-
 
 # Detection of a individual can be affected by the group size, adding a group size covariate
 # Calculating group sizes
@@ -304,6 +307,8 @@ head(heli_dat_clean)
 # Taking a look at the last subbed observation in a 3D model
 plot(sub_las, color = "Classification", bg = "white", size = 5)
 
+# Saving the data with Lidar
+saveRDS(heli_dat_clean, file = "./Data/Survey_Data/Helicopter_Data/Heli_Data_LiDAR.rds")
 
 
 ## -------------------------------------------------
@@ -371,21 +376,9 @@ for (date in unique(heli_sub_dat$Date)) {
     # Formating data to DD.MM.YYYY
     formatted_date <- gsub("/", ".", row$Date)
     
-    # Get the Group_size value for the current row for looping
-    group_size <- row$Group_size 
-    
-    # Group size object for id of individual in group
-    num_in_group <- group_size
-
-    # Create new rows based on Group_size
-    for (j in 1:group_size) {
-        
-      # Adding an observation number
-      row$num_in_group <- num_in_group
-      
-      # Create Unique_ID
-      row$Unique_ID <- paste0(formatted_date, "_", row$Transect_ID, ".", 
-                              row$GroupID, ".", row$num_in_group)
+    # Adding unique ID
+    row$Unique_ID <- paste0(formatted_date, "_", row$Transect_ID, ".",
+                              row$GroupID)
       
       # Adding to new data frame
       heli_bin_dat[line, 'Study_Area'] <- row[1, 'Study_Area']
@@ -401,15 +394,10 @@ for (date in unique(heli_sub_dat$Date)) {
       heli_bin_dat[line, "Ground"] <- row[1, 'Ground']
       heli_bin_dat[line, 'Med_Veg'] <- row[1, 'Med_Veg']
       heli_bin_dat[line, 'High_veg'] <- row[1, 'High_veg']
-      
-      # Reduce the group size by 1 after naming
-      num_in_group <- num_in_group - 1
-      
+
       # Increment line index
       line <- line + 1
 
-      
-    }
   }
  }
 }
