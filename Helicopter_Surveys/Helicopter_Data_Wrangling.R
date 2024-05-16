@@ -323,6 +323,7 @@ structure_dat <- heli_dat_clean[, c(1:13)]
 saveRDS(structure_dat, file = "./Data/Survey_Data/Helicopter_Data/Structure_Data.rds")
 
 
+
 ## -------------------------------------------------
 ##           Individual Observation Data 
 ## -------------------------------------------------       
