@@ -184,6 +184,57 @@ print(fall23_abund, report="abundance")
                         
                         
                         
-                        
-                        
-                                   
+heli_dat_new <- heli_dat                     
+
+
+
+heli_dat_new$replicate <- ifelse(heli_dat_new$Date == "9/8/2023", 1,
+                                   ifelse(heli_dat_new$Date == "9/9/2023", 2, 
+                                          ifelse(heli_dat_new$Date == "2/9/2024" , 3, 
+                                                 ifelse(heli_dat_new$Date == "2/10/2024" , 4,NA))))
+
+
+# half normal detection function model
+hn_null <- ds(data = heli_dat_new, 
+                     formula = ~ 1,
+                     transect = "line", # point or line 
+                     key = "hn", # detection model: Half-normal (hn), hazard-rate (hr), uniform (unif)
+                     dht_group = FALSE, # consider group sizes to be size 1 (TRUE), default is FALSE, abundance of individuals is calculated
+                     adjustment = NULL, # adjustment to use cosine (cos) default, hermite polynomial (herm), simple polynomial (poly)
+                     convert_units = conversion.factor,
+)
+
+
+# Group size
+hn_fit1 <- ds(data = heli_dat_new, 
+                     formula = ~ log(size),
+                     transect = "line", # point or line 
+                     key = "hn", # detection model: Half-normal (hn), hazard-rate (hr), uniform (unif)
+                     dht_group = FALSE, # consider group sizes to be size 1 (TRUE), default is FALSE, abundance of individuals is calculated
+                     adjustment = NULL, # adjustment to use cosine (cos) default, hermite polynomial (herm), simple polynomial (poly)
+                     convert_units = conversion.factor,
+)
+
+
+# number of crowns
+hn_fit2 <- ds(data = heli_dat_new, 
+                     formula = ~ log(num_Crowns),
+                     transect = "line", # point or line 
+                     key = "hn", # detection model: Half-normal (hn), hazard-rate (hr), uniform (unif)
+                     dht_group = FALSE, # consider group sizes to be size 1 (TRUE), default is FALSE, abundance of individuals is calculated
+                     adjustment = NULL, # adjustment to use cosine (cos) default, hermite polynomial (herm), simple polynomial (poly)
+                     convert_units = conversion.factor, # conversion for units for abundance estimation. distance, effort and study area
+)
+
+# Getting estimates of abundance
+abund <-  dht2(
+  ddf = hn_fit1$ddf,
+  flatfile = heli_dat_new,
+  stratification = "replicate",
+  strat_formula = ~ replicate,
+  convert_units = conversion.factor
+  
+)
+
+print(abund, report="density")                     
+print(abund, report="abundance")                       
