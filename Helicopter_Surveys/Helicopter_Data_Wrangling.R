@@ -90,7 +90,7 @@ heli_dat_snap <- heli_dat %>%
                                        geometry), 
                                 crs = st_crs(transects)))
 # Taking a look
-View(heli_dat_snap)
+#View(heli_dat_snap)
 
 ggplot()+
   geom_sf(data = boundary, col = 'black')+
@@ -276,90 +276,44 @@ lasFiles <- readLAScatalog(las_folder, filter = "-keep_class 2 3 4 5")
 # Summary of las files
 summary(lasFiles)
 
-# lidR only accepts points, polygons or multi polygons
-# transforming transects from polylines to polygons
+## lidR only accepts points, polygons or multi polygons
 
-# Create an empty list to store polygons
-polygon_list  <- list()
-
-# Loop through each line segment and buffer it to create a polygon
-for (i in 1:nrow(transects)) {
-  line <- transects$geometry[i]
-  # Buffer the line segment to create a polygon with a width of 200m
-  # which is max detection for distance sampling
-  polygon <- st_buffer(line, dist = 100)  # 100 meters on each side of the line
-  polygon_list [[i]] <- st_sf(geometry = polygon)
-}
-
-# Combine all polygons into a single Simple Features collection
-transects_poly <- do.call(rbind, polygon_list)
-
-# Take a look
-head(transects_poly)
-
-# creating a df to hold transect lidar data
-lidar_dat <- as.data.frame(matrix(data = NA, nrow = 12, ncol = 4))
-colnames(lidar_dat) <- c("prp_Ground", "prp_Low_Veg", "prp_Med_Veg", "prp_High_veg")
-
-
-# Extracting LiDAR data by transect
+# Extracting LiDAR data by individual observation
 for (row in 1:NROW(heli_dat_clean)){
   
   # Extracting LiDAR data
-  sub_las <- clip_roi(lasFiles, transects_poly[row, "geometry"], radius = 0)
+  sub_las <- clip_roi(lasFiles, heli_dat_clean[row, "geometry"], radius = 20)
   
   # Putting extracted data into a table
   LiDAR_table <- table(sub_las$Classification)
   
-  # Rename the categories
-  names(LiDAR_table) <- c("ground", "low_veg", "med_veg", "high_veg")
-  
   # Calculate the total count for each habitat type
   total_count <- sum(LiDAR_table)
   
-  # Calculate the proportions of habitat
-  proportions <- (LiDAR_table / total_count)
+  # transform table to dataframe
+  LiDAR_table <- as.data.frame(LiDAR_table)
   
-  # creating canopy height model
-  chm <- rasterize_canopy(sub_las, 0.5, p2r(subcircle = 0.2), pkg = "terra")
-  
-  # Smoothing canopy height model
-  chm_smoothed <- terra::focal(chm, w = matrix(1,3,3), fun = median, na.rm = TRUE)
-  
-  # Locating tree tops
-  ttops_chm_smoothed <- locate_trees(chm_smoothed, lmf(5))
-  
-  # Algorithm for tree detection
-  algo <- dalponte2016(chm_smoothed, ttops_chm_smoothed)
-  
-  # Tree detection
-  trees <- segment_trees(sub_las, algo)
-  
-  # Getting convex hull of eacy detected tree canopy
-  crowns <- crown_metrics(trees, func = .stdtreemetrics, geom = "convex")
+  # Subset rows where Var1 is 3 (med veg) or 4 (high veg)
+  LiDAR_subset <- LiDAR_table[LiDAR_table$Var1 %in% c(3, 4), ]
+
+  # Calculate the proportions of med-high vegetation
+  proportions <- (sum(LiDAR_subset$Freq) / total_count)
   
   # Adding proportions to dataframe
-  lidar_dat[row, "prp_Ground"] <- proportions[1]   # proportion ground points
-  lidar_dat[row, "prp_Low_Veg"] <- proportions[2]  # proportion low vegetation points
-  lidar_dat[row, "prp_Med_Veg"] <- proportions[3]  # proportion medium vegetation points
-  lidar_dat[row, "prp_High_veg"] <- proportions[4] # proportion high vegetation points
-  lidar_dat[row, "num_Crowns"] <- NROW(crowns)     # total number of crowns (tree canopys)
-  lidar_dat[row, "mean_Crown"] <- mean(crowns$convhull_area) #mean height of trees
+  heli_dat_clean[row, "VegDensity"] <- proportions # proportion medium + high vegetation points
+
 }
 
 # Take a look
-head(lidar_dat)
+head(heli_dat_clean)
 
 # and just because...
 # taking a look at the last subbed observation in a 3D model
 plot(sub_las, color = "Classification", bg = "white", size = 5)
 
 
-# adding a column for transect ID
-lidar_dat$Transect_ID <- 1:12
-
 # Saving the lidar data
-saveRDS(lidar_dat, file = "./Data/Survey_Data/Helicopter_Data/LiDAR_data.rds")
+saveRDS(heli_dat_clean, file = "./Data/Survey_Data/Helicopter_Data/heli_dat_clean.rds")
 
 
 ## -------------------------------------------------
@@ -375,114 +329,114 @@ saveRDS(structure_dat, file = "./Data/Survey_Data/Helicopter_Data/Structure_Data
 
 
 
-## -------------------------------------------------
-##           Individual Observation Data 
-## -------------------------------------------------       
-
-# Merge lidar_dat with heli_dat_clean by Transect_ID
-heli_dat_clean <- left_join(heli_dat_clean, lidar_dat, by = "Transect_ID")
-
-
-## Creating a dataframe where each observation of multiple individuals 
-## is separated into individual observations with accompaning covariates and a 
-## unique observation ID
-
-# subsetting out age and sex data
-heli_sub_dat <- heli_dat_clean[, -c(7:13, 21)]
-
-# Take a look
-head(heli_sub_dat)
-
-
-
-## Analysis can either be done using the sum of counts in a distance bin, which
-## looses some power in covariates or it can be done where each observation (individual not group)
-## has an observation in a distance bin. This allows for observation level covariates to be retained
-
-
-# Initialize an empty dataframe to store expanded data
-heli_bin_dat <- data.frame()
-
-# Object for indexing
-line <- 1
-
-# Iterate over unique dates
-for (date in unique(heli_sub_dat$Date)) {
-  
-  # Subset the data for the current date
-  date_subset <- heli_sub_dat[heli_sub_dat$Date == date, ]
-  
-  # Iterate over unique Transect_IDs
-  for (transect_id in unique(date_subset$Transect_ID)) {
-    
-    # Subset the data for the current Transect_ID
-    transect_subset <- date_subset[date_subset$Transect_ID == transect_id, ]
-    
-    # Adding in a group identifier
-    transect_subset$GroupID <- 1:NROW(transect_subset)
-    
-
-  # Iterate over each row of the subset
-  for (i in 1:nrow(transect_subset)) {
-    
-    # Select the current row
-    row <- transect_subset[i, ]  
-
-    # Formating data to DD.MM.YYYY
-    formatted_date <- gsub("/", ".", row$Date)
-    
-    # Adding unique ID
-    row$Unique_ID <- paste0(formatted_date, "_", row$Transect_ID, ".",
-                              row$GroupID)
-      
-      # Adding to new data frame
-      heli_bin_dat[line, 'Study_Area'] <- row[1, 'Study_Area']
-      heli_bin_dat[line, 'Area_ha'] <- row[1, 'Area_ha']
-      heli_bin_dat[line, 'Unique_ID'] <- row[1, 'Unique_ID']
-      heli_bin_dat[line, 'Transect_ID'] <- row[1, 'Transect_ID']
-      heli_bin_dat[line, 'Transect_Length_km'] <- row[1, 'Transect_Length_km']
-      heli_bin_dat[line, 'geometry'] <- row[1, 'geometry']
-      heli_bin_dat[line, 'Date'] <- row[1, 'Date']
-      heli_bin_dat[line, 'Distance'] <- row[1, 'Perpendicular_Distance']
-      heli_bin_dat[line, 'Group_size'] <- row[1, 'Group_size']
-      heli_bin_dat[line, 'Survey_Time'] <- row[1, 'Survey_Time']
-      heli_bin_dat[line, "prp_Ground"] <- row[1, 'prp_Ground']
-      heli_bin_dat[line, "prp_Low_Veg"] <- row[1, 'prp_Low_Veg']
-      heli_bin_dat[line, 'prp_Med_Veg'] <- row[1, 'prp_Med_Veg']
-      heli_bin_dat[line, 'prp_High_veg'] <- row[1, 'prp_High_veg']
-      heli_bin_dat[line, "num_Crowns"] <- row[1, "num_Crowns"]
-      heli_bin_dat[line, "mean_Crown"] <- row[1, "mean_Crown"]
-        
-      # Increment line index
-      line <- line + 1
-
-  }
- }
-}
-
-# Ordering dataframe by date and then unique ID
-heli_bin_dat <- heli_bin_dat[order(as.Date(heli_bin_dat$Date, format = "%m/%d/%Y"), heli_bin_dat$Unique_ID), ]
-
-# Take a look
-View(heli_bin_dat)
-
-
-# Adding a column based on survey date the survey's replicate number
-heli_bin_dat$Replicate <- ifelse(heli_bin_dat$Survey_Time == "Evening", 1,
-                                 ifelse(heli_bin_dat$Survey_Time == "Morning", 2, NA))
-
-# Take a look
-head(heli_bin_dat)
-tail(heli_bin_dat)
-
-# Exporting the data as a rds file
-# saving as a .rds file for analysis later on
-saveRDS(heli_bin_dat, file = "./Data/Survey_Data/Helicopter_Data/Heli_Dist_Data.rds")
-
-
-
-
-
-
-
-
+# ## -------------------------------------------------
+# ##           Individual Observation Data 
+# ## -------------------------------------------------       
+# 
+# # Merge lidar_dat with heli_dat_clean by Transect_ID
+# heli_dat_clean <- left_join(heli_dat_clean, lidar_dat, by = "Transect_ID")
+# 
+# 
+# ## Creating a dataframe where each observation of multiple individuals 
+# ## is separated into individual observations with accompaning covariates and a 
+# ## unique observation ID
+# 
+# # subsetting out age and sex data
+# heli_sub_dat <- heli_dat_clean[, -c(7:13, 21)]
+# 
+# # Take a look
+# head(heli_sub_dat)
+# 
+# 
+# 
+# ## Analysis can either be done using the sum of counts in a distance bin, which
+# ## looses some power in covariates or it can be done where each observation (individual not group)
+# ## has an observation in a distance bin. This allows for observation level covariates to be retained
+# 
+# 
+# # Initialize an empty dataframe to store expanded data
+# heli_bin_dat <- data.frame()
+# 
+# # Object for indexing
+# line <- 1
+# 
+# # Iterate over unique dates
+# for (date in unique(heli_sub_dat$Date)) {
+#   
+#   # Subset the data for the current date
+#   date_subset <- heli_sub_dat[heli_sub_dat$Date == date, ]
+#   
+#   # Iterate over unique Transect_IDs
+#   for (transect_id in unique(date_subset$Transect_ID)) {
+#     
+#     # Subset the data for the current Transect_ID
+#     transect_subset <- date_subset[date_subset$Transect_ID == transect_id, ]
+#     
+#     # Adding in a group identifier
+#     transect_subset$GroupID <- 1:NROW(transect_subset)
+#     
+# 
+#   # Iterate over each row of the subset
+#   for (i in 1:nrow(transect_subset)) {
+#     
+#     # Select the current row
+#     row <- transect_subset[i, ]  
+# 
+#     # Formating data to DD.MM.YYYY
+#     formatted_date <- gsub("/", ".", row$Date)
+#     
+#     # Adding unique ID
+#     row$Unique_ID <- paste0(formatted_date, "_", row$Transect_ID, ".",
+#                               row$GroupID)
+#       
+#       # Adding to new data frame
+#       heli_bin_dat[line, 'Study_Area'] <- row[1, 'Study_Area']
+#       heli_bin_dat[line, 'Area_ha'] <- row[1, 'Area_ha']
+#       heli_bin_dat[line, 'Unique_ID'] <- row[1, 'Unique_ID']
+#       heli_bin_dat[line, 'Transect_ID'] <- row[1, 'Transect_ID']
+#       heli_bin_dat[line, 'Transect_Length_km'] <- row[1, 'Transect_Length_km']
+#       heli_bin_dat[line, 'geometry'] <- row[1, 'geometry']
+#       heli_bin_dat[line, 'Date'] <- row[1, 'Date']
+#       heli_bin_dat[line, 'Distance'] <- row[1, 'Perpendicular_Distance']
+#       heli_bin_dat[line, 'Group_size'] <- row[1, 'Group_size']
+#       heli_bin_dat[line, 'Survey_Time'] <- row[1, 'Survey_Time']
+#       heli_bin_dat[line, "prp_Ground"] <- row[1, 'prp_Ground']
+#       heli_bin_dat[line, "prp_Low_Veg"] <- row[1, 'prp_Low_Veg']
+#       heli_bin_dat[line, 'prp_Med_Veg'] <- row[1, 'prp_Med_Veg']
+#       heli_bin_dat[line, 'prp_High_veg'] <- row[1, 'prp_High_veg']
+#       heli_bin_dat[line, "num_Crowns"] <- row[1, "num_Crowns"]
+#       heli_bin_dat[line, "mean_Crown"] <- row[1, "mean_Crown"]
+#         
+#       # Increment line index
+#       line <- line + 1
+# 
+#   }
+#  }
+# }
+# 
+# # Ordering dataframe by date and then unique ID
+# heli_bin_dat <- heli_bin_dat[order(as.Date(heli_bin_dat$Date, format = "%m/%d/%Y"), heli_bin_dat$Unique_ID), ]
+# 
+# # Take a look
+# View(heli_bin_dat)
+# 
+# 
+# # Adding a column based on survey date the survey's replicate number
+# heli_bin_dat$Replicate <- ifelse(heli_bin_dat$Survey_Time == "Evening", 1,
+#                                  ifelse(heli_bin_dat$Survey_Time == "Morning", 2, NA))
+# 
+# # Take a look
+# head(heli_bin_dat)
+# tail(heli_bin_dat)
+# 
+# # Exporting the data as a rds file
+# # saving as a .rds file for analysis later on
+# saveRDS(heli_bin_dat, file = "./Data/Survey_Data/Helicopter_Data/Heli_Dist_Data.rds")
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
