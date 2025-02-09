@@ -5,6 +5,14 @@
 ##
 ## ------------------------------------------------------------------------------
 
+# install.packages("sf")
+# install.packages("sp")
+# install.packages("geosphere")
+# install.packages("tidyverse")
+# install.packages("lidR")
+# install.packages("RCSF")
+# install.packages("terra")
+
 
 library(sf)
 library(sp)
@@ -28,8 +36,8 @@ transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_Transe
 boundary <- st_read("./Data/Spatial_Data/La_Copita_Boundary")
 
 # Read the .csv data file
-heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Helicopter_Survey_Data-Rolling10.15.24.csv")
-
+heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Helicopter_Survey_Data_Fall2023-Winter2025.csv")
+ 
 # Disable scientific notation
 options(scipen = 9999)
 
@@ -249,7 +257,7 @@ distance <- heli_dat_clean %>%
 # Adding distance to clean df
 heli_dat_clean$Perpendicular_Distance <- distance$distance
 heli_dat_clean$Perpendicular_Distance <- as.numeric(heli_dat_clean$Perpendicular_Distance)
-
+heli_dat_clean$Perpendicular_Distance <- round(heli_dat_clean$Perpendicular_Distance)
 
 # Detection of a individual can be affected by the group size, adding a group size covariate
 # Calculating group sizes
@@ -319,14 +327,14 @@ saveRDS(heli_dat_clean, file = "./Data/Survey_Data/Helicopter_Data/heli_dat_clea
 ## -------------------------------------------------
 ##           Population Structure Data 
 ## -------------------------------------------------       
-
-
-## Creating a subsetted dataset of just sex and age structuring data 
-structure_dat <- heli_dat_clean[, c(1:13)]
-
-# saving as a .rds file for analsis later on
-saveRDS(structure_dat, file = "./Data/Survey_Data/Helicopter_Data/Structure_Data.rds")
-
+# 
+# 
+# ## Creating a subsetted dataset of just sex and age structuring data 
+# structure_dat <- heli_dat_clean[, c(1:13)]
+# 
+# # saving as a .rds file for analsis later on
+# saveRDS(structure_dat, file = "./Data/Survey_Data/Helicopter_Data/Structure_Data.rds")
+# 
 
 
 # ## -------------------------------------------------

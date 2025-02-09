@@ -88,28 +88,28 @@ for (i in 1:NROW(heli_dat)){
     row <- heli_dat[i, ]
     
     if (row$Distance_Bins == "bin1"){
-      obs_mat[i, 1] <- 1
+      obs_mat[i, 1] <- heli_dat[i, 9]
       obs_mat[i, 2] <- 0
       obs_mat[i, 3] <- 0
       obs_mat[i, 4] <- 0
     }
     if (row$Distance_Bins == "bin2"){
       obs_mat[i, 1] <- 0
-      obs_mat[i, 2] <- 1
+      obs_mat[i, 2] <- heli_dat[i, 9]
       obs_mat[i, 3] <- 0
       obs_mat[i, 4] <- 0
     }
     if (row$Distance_Bins == "bin3"){
       obs_mat[i, 1] <- 0
       obs_mat[i, 2] <- 0
-      obs_mat[i, 3] <- 1
+      obs_mat[i, 3] <- heli_dat[i, 9]
       obs_mat[i, 4] <- 0
     }
     if (row$Distance_Bins == "bin4"){
       obs_mat[i, 1] <- 0
       obs_mat[i, 2] <- 0
       obs_mat[i, 3] <- 0
-      obs_mat[i, 4] <- 1
+      obs_mat[i, 4] <- heli_dat[i, 9]
     }
 }
 
