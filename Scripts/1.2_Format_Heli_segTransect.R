@@ -355,7 +355,7 @@ heli_dat_clean$segT_ID <- sapply(within_buffer, function(x) ifelse(length(x) > 0
 # Take a look
 head(heli_dat_clean)
 
-# Extract the coordinates rom the geometry column
+# Extract the coordinates from the geometry column
 heli_dat_clean$geometry <- st_transform(heli_dat_clean$geometry, crs = 4326)
 heli_dat_clean$longitude <- st_coordinates(heli_dat_clean$geometry)[, 1]
 heli_dat_clean$latitude <- st_coordinates(heli_dat_clean$geometry)[, 2]
