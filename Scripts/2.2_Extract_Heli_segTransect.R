@@ -58,11 +58,11 @@ lasFiles <- readLAScatalog(las_folder, filter = "-keep_class 2 3 4 5")# Read in 
 summary(lasFiles)
 
 # Read in site locations
-transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_Transects.shp")
+transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_SegmentedTransects.shp")
 print(transects)
 
 # Directory for plots
-output_dir <- "./Figures/LULC/Transect/"
+output_dir <- "./Figures/LULC/segTransect/"
 
 # Extracting each class to a new raster
 woody_class <- lulc_rast == 0   # Woody
@@ -115,7 +115,7 @@ for (row in 1:NROW(transects)) {
   site_sub <- transects[row, ]
   
   # Getting siteID
-  SiteID <- site_sub[,2]
+  SiteID <- site_sub[,17]
   
   # Create a buffer around the site
   site_buffer <- st_buffer(site_sub[, "geometry"], dist = 100, endCapStyle="FLAT")
@@ -289,7 +289,7 @@ print(trans_site_covs)
 # -----------------------------------
 
 # Remove geometry and name as new df
-X.abund <- trans_site_covs[,-c(1,3:14)]
+X.abund <- trans_site_covs[,-c(1:16,18)]
 
 # Mean and center scale values
 X.abund$woody_prp <- scale(X.abund$woody_prp, center = TRUE, scale = TRUE)
@@ -315,7 +315,7 @@ print(X.abund)
 
 
 # Export data
-write.csv(X.abund, "./Data/Survey_Data/Helicopter_Data/Heli_Transect_siteCovs.csv")
+write.csv(trans_site_covs, "./Data/Survey_Data/Helicopter_Data/Heli_segTransect_siteCovs.csv")
 
 
 
