@@ -58,11 +58,11 @@ lasFiles <- readLAScatalog(las_folder, filter = "-keep_class 2 3 4 5")# Read in 
 summary(lasFiles)
 
 # Read in site locations
-transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_Transects.shp")
-print(transects)
+site_dat <- read.csv("./Data/Survey_Data/Camera_Data/Cam_sites.csv")
+print(site_dat)
 
 # Directory for plots
-output_dir <- "./Figures/LULC/Transect/"
+output_dir <- "./Figures/LULC/Cameras/"
 
 # Extracting each class to a new raster
 woody_class <- lulc_rast == 0   # Woody
@@ -92,13 +92,13 @@ brgnd_class <- rast(brgnd_class)
 # ------------------------------------------------------------------------------
 
 # Dataframe for site covariates
-trans_site_covs <- as.data.frame(transects)
+site_covs <- as.data.frame(site_dat)
 
 
 # Initialize the progress bar
 pb <- progress_bar$new(
   format = "  Processing [:bar] :percent in :elapsed, remaining: :eta",
-  total = NROW(transects),
+  total = NROW(site_dat),
   clear = FALSE,
   width = 100
 )
@@ -107,22 +107,26 @@ pb <- progress_bar$new(
 # row = 1
 
 # Loop
-for (row in 1:NROW(transects)) {
+for (row in 1:NROW(site_dat)) {
   
   ## list_lsm() list of available metrics ##
   
   # Subset the site
-  site_sub <- transects[row, ]
+  site_sub <- site_dat[row, ]
   
   # Getting siteID
-  SiteID <- as.data.frame(site_sub[,2])
-  SiteID <- SiteID[,-2] # remove geometry
+  SiteID <- site_sub[,1]
+  
+  # Setting projection
+  site_sub_coords <- SpatialPoints(coords = site_sub[, c("Long", "Lat")],
+                                   proj4string = CRS("+proj=longlat +datum=WGS84"))
+  
   
   # Create a buffer around the site
-  site_buffer <- st_buffer(site_sub[, "geometry"], dist = 100, endCapStyle="FLAT")
+  site_buffer <- terra::buffer(site_sub_coords, width = 333)
   site_buffer_terra <- vect(site_buffer) # SpatVector
   site_buffer_terra <- terra::project(site_buffer_terra, terra::crs(lulc_rast))# CRS of lulc
-  
+
   # Extract and crop the raster for the buffer
   lulc_clip <- terra::crop(lulc_rast, site_buffer_terra)
   lulc_clip <- terra::mask(lulc_clip, site_buffer_terra)
@@ -162,9 +166,9 @@ for (row in 1:NROW(transects)) {
   woody_prp <- terra::extract(woody_class, site_buffer_terra, fun = mean, na.rm = TRUE)
   herb_prp <- terra::extract(herb_class, site_buffer_terra, fun = mean, na.rm = TRUE)
   brgnd_prp <- terra::extract(brgnd_class, site_buffer_terra, fun = mean, na.rm = TRUE)
-  trans_site_covs[row, "woody_prp"] <- woody_prp[1, 'layer']          
-  trans_site_covs[row, "herb_prp"] <- herb_prp[1, 'layer']              
-  trans_site_covs[row, "open_prp"] <- herb_prp[1, 'layer'] + brgnd_prp[1, 'layer'] 
+  site_covs[row, "woody_prp"] <- woody_prp[1, 'layer']          
+  site_covs[row, "herb_prp"] <- herb_prp[1, 'layer']              
+  site_covs[row, "open_prp"] <- herb_prp[1, 'layer'] + brgnd_prp[1, 'layer'] 
   
   
   # ------------------------------
@@ -176,8 +180,8 @@ for (row in 1:NROW(transects)) {
   woody_p_area_mean <- mean(woody_p_area$value, na.rm = TRUE)
   herb_p_area <- p_area[which(p_area$class == 1),] # Herbaceous
   herb_p_area_mean <- mean(herb_p_area$value, na.rm = TRUE) 
-  trans_site_covs[row, "woody_mnParea"] <- woody_p_area_mean    
-  trans_site_covs[row, "herb_mnParea"] <- herb_p_area_mean
+  site_covs[row, "woody_mnParea"] <- woody_p_area_mean    
+  site_covs[row, "herb_mnParea"] <- herb_p_area_mean
   
   
   # ------------------------------
@@ -188,8 +192,8 @@ for (row in 1:NROW(transects)) {
   c_clumpy <- landscapemetrics::calculate_lsm(lulc_clip, what = "lsm_c_clumpy")
   woody_c_clumpy <- c_clumpy[which(c_clumpy$class == 0),] # Woody
   herb_c_clumpy <- c_clumpy[which(c_clumpy$class == 1),] # Herbaceous
-  trans_site_covs[row, "woody_ClmIdx"] <- woody_c_clumpy[1, 'value'] 
-  trans_site_covs[row, "herb_ClmIdx"] <- herb_c_clumpy[1, 'value']
+  site_covs[row, "woody_ClmIdx"] <- woody_c_clumpy[1, 'value'] 
+  site_covs[row, "herb_ClmIdx"] <- herb_c_clumpy[1, 'value']
   
   
   # ------------------------------
@@ -199,8 +203,8 @@ for (row in 1:NROW(transects)) {
   # Equals SHAPE_MN = 1 if all patches are squares. Increases, without limit, as the shapes of patches become more complex.
   woody_shape_mn <- landscapemetrics::calculate_lsm(woody_clip, what = "lsm_l_shape_mn") # Woody
   herb_shape_mn <- landscapemetrics::calculate_lsm(herb_clip, what = "lsm_l_shape_mn") # Herbaceous
-  trans_site_covs[row, "woody_ShpInx"] <- woody_shape_mn[1, 'value']   
-  trans_site_covs[row, "herb_ShpInx"] <- herb_shape_mn[1, 'value']  
+  site_covs[row, "woody_ShpInx"] <- woody_shape_mn[1, 'value']   
+  site_covs[row, "herb_ShpInx"] <- herb_shape_mn[1, 'value']  
   
   
   # ------------------------------
@@ -211,8 +215,8 @@ for (row in 1:NROW(transects)) {
   c_lpi <- landscapemetrics::calculate_lsm(lulc_clip, what = "lsm_c_lpi")
   woody_c_lpi <- c_lpi[which(c_lpi$class == 0),] # Woody
   herb_c_lpi <- c_lpi[which(c_lpi$class == 1),] # Herbaceous
-  trans_site_covs[row, "woody_lrgPInx"] <- woody_c_lpi[1, 'value']   
-  trans_site_covs[row, "herb_lrgPInx"] <- herb_c_lpi[1, 'value']  
+  site_covs[row, "woody_lrgPInx"] <- woody_c_lpi[1, 'value']   
+  site_covs[row, "herb_lrgPInx"] <- herb_c_lpi[1, 'value']  
   
   
   # ------------------------------
@@ -223,8 +227,8 @@ for (row in 1:NROW(transects)) {
   c_ai <- landscapemetrics::calculate_lsm(lulc_clip, what = "lsm_c_ai")
   woody_c_ai <- c_ai[which(c_ai$class == 0),] # Woody
   herb_c_ai <- c_ai[which(c_ai$class == 1),] # Herbaceous
-  trans_site_covs[row, "woody_AggInx"] <- woody_c_ai[1, 'value']     
-  trans_site_covs[row, "herb_AggInx"] <- herb_c_ai[1, 'value']  
+  site_covs[row, "woody_AggInx"] <- woody_c_ai[1, 'value']     
+  site_covs[row, "herb_AggInx"] <- herb_c_ai[1, 'value']  
   
   
   # ------------------------------
@@ -235,8 +239,8 @@ for (row in 1:NROW(transects)) {
   c_ed <- landscapemetrics::calculate_lsm(lulc_clip, what = "lsm_c_ed")
   woody_c_ed <- c_ed[which(c_ed$class == 0),] # Woody
   herb_c_ed <- c_ed[which(c_ed$class == 1),] # Herbaceous
-  trans_site_covs[row, "woody_EdgDens"] <- woody_c_ed[1, 'value']   
-  trans_site_covs[row, "herb_EdgDens"] <- herb_c_ed[1, 'value'] 
+  site_covs[row, "woody_EdgDens"] <- woody_c_ed[1, 'value']   
+  site_covs[row, "herb_EdgDens"] <- herb_c_ed[1, 'value'] 
   
   
   # ------------------------------
@@ -247,8 +251,8 @@ for (row in 1:NROW(transects)) {
   c_pd <- landscapemetrics::calculate_lsm(lulc_clip, what = "lsm_c_pd")
   woody_c_pd <- c_pd[which(c_pd$class == 0),] # Woody
   herb_c_pd <- c_pd[which(c_pd$class == 1),] # Herbaceous
-  trans_site_covs[row, "woody_Pdens"] <- woody_c_pd[1, 'value']
-  trans_site_covs[row, "herb_Pdens"] <- herb_c_pd[1, 'value']
+  site_covs[row, "woody_Pdens"] <- woody_c_pd[1, 'value']
+  site_covs[row, "herb_Pdens"] <- herb_c_pd[1, 'value']
   
   
   # ------------------------------
@@ -268,8 +272,8 @@ for (row in 1:NROW(transects)) {
   dev.off()
   
   # Number of patches
-  trans_site_covs[row, "woody_Npatches"] <- cellStats(woody_clumps, stat = "max")
-  trans_site_covs[row, "herb_Npatches"] <- cellStats(herb_clumps, stat = "max")
+  site_covs[row, "woody_Npatches"] <- cellStats(woody_clumps, stat = "max")
+  site_covs[row, "herb_Npatches"] <- cellStats(herb_clumps, stat = "max")
   
 
   # ------------------------------
@@ -281,8 +285,9 @@ for (row in 1:NROW(transects)) {
 
 
 # Take a look
-str(trans_site_covs)
-print(trans_site_covs)
+str(site_covs)
+print(site_covs)
+
 
 
 # -----------------------------------
@@ -290,7 +295,7 @@ print(trans_site_covs)
 # -----------------------------------
 
 # Remove geometry and name as new df
-X.abund <- trans_site_covs[,-c(1,3:14)]
+X.abund <- site_covs[,-c(2:3)]
 
 # Mean and center scale values
 X.abund$woody_prp <- scale(X.abund$woody_prp, center = TRUE, scale = TRUE)
