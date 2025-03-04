@@ -260,11 +260,21 @@ heli_dat_clean$Perpendicular_Distance <- as.numeric(heli_dat_clean$Perpendicular
 heli_dat_clean$Perpendicular_Distance <- round(heli_dat_clean$Perpendicular_Distance)
 
 # Detection of a individual can be affected by the group size, adding a group size covariate
+
 # Calculating group sizes
 heli_dat_clean$Group_size <- rowSums(heli_dat_clean[,c(7:13)])
 
 # Summing all males rowwise
 heli_dat_clean$Males <- rowSums(heli_dat_clean[,c(9:12)])
 
+# -------------------------------------------------
+# Exporting 
+# -------------------------------------------------       
+
+# Removing geometry column.
+heli_dat_clean <- heli_dat_clean[,-c(18)]
+
+# Saving as CSV
+write.csv(heli_dat_clean, "./Data/Survey_Data/Helicopter_Data/Formatted_Heli_Transect_Data.csv")
 
 # End Script
