@@ -42,14 +42,8 @@ setwd(".")
 #
 # ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-#
-#                                 Load Data
-#
-# ------------------------------------------------------------------------------
-
 # Read in raster data
-lulc_rast <- stack("D:/LaCopita_GIS_Data/LaCopitaLULC/LaCopitaLULC_60cm_SVM/LULC_60cm_SVM_Raster/LaCopitaLULC_60cm_SVM.tif")
+lulc_rast <- stack("D:/LaCopita_GIS_Data/LaCopitaLULC/LaCopitaLULC_60cm_SVM_Buffered/LaCopitaLULC_60cm_SVM_Buffered.tif")
 print(lulc_rast)
 
 # Read in site locations
@@ -278,6 +272,11 @@ for (row in 1:NROW(transects)) {
 # Take a look
 str(trans_site_covs)
 print(trans_site_covs)
+
+
+
+# # Removing Shape file related info
+trans_site_covs <- trans_site_covs[ , -c(1, 3:14)]
 
 
 # Export data
