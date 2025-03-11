@@ -49,7 +49,7 @@ transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_Transe
 boundary <- st_read("./Data/Spatial_Data/La_Copita_Boundary")
 
 # Read the .csv data file
-heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Helicopter_Survey_Data_Fall2023-Winter2025.csv")
+heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Raw_Data/Helicopter_Survey_Data_Fall2023-Winter2025.csv")
  
 # ------------------------------------------------------------------------------
 #
@@ -274,7 +274,25 @@ heli_dat_clean$Males <- rowSums(heli_dat_clean[,c(9:12)])
 # Removing geometry column.
 heli_dat_clean <- heli_dat_clean[,-c(18)]
 
+# Fixing transect effort column
+# Some values were not entered correctly
+# Create a reference dataframe with correct values
+correct_lengths <- data.frame(
+  Transect_ID = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12),
+  Transect_Length_km = c(2.94, 4.99, 4.99, 4.99, 4.68, 4.74, 4.79, 4.84, 1.25, 1.25, 1.25, 1.25)
+)
+
+# Merge with heli_dat_clean to update Transect_Length_km, suffixes = c("_old", "")
+heli_dat_clean$Transect_Length_km <- correct_lengths$Transect_Length_km[
+                                        match(heli_dat_clean$Transect_ID, correct_lengths$Transect_ID)]
+
+# Print to check
+head(heli_dat_clean, 5)
+
+
+
+
 # Saving as CSV
 write.csv(heli_dat_clean, "./Data/Survey_Data/Helicopter_Data/Formatted_Heli_Transect_Data.csv")
 
-# End Script
+# ----------------------------- End of Script -----------------------------
