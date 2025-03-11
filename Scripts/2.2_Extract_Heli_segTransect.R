@@ -49,7 +49,7 @@ setwd(".")
 # ------------------------------------------------------------------------------
 
 # Read in raster data
-lulc_rast <- stack("D:/LaCopita_GIS_Data/LaCopitaLULC/LaCopitaLULC_60cm_SVM/LULC_60cm_SVM_Raster/LaCopitaLULC_60cm_SVM.tif")
+lulc_rast <- stack("D:/LaCopita_GIS_Data/LaCopitaLULC/LaCopitaLULC_60cm_SVM_Buffered/LaCopitaLULC_60cm_SVM_Buffered.tif")
 print(lulc_rast)
 
 # Read in site locations
@@ -72,7 +72,8 @@ woody_class <- rast(woody_class)
 herb_class <- rast(herb_class)
 brgnd_class <- rast(brgnd_class)
 
-# # Plots
+# Plots
+plot(lulc_rast, main = "La Copita LULC")
 # plot(woody_class, main = "Woody")
 # plot(herb_class, main = "Herbaceous")
 # plot(baregnd_class, main = "Bare Ground")
@@ -110,8 +111,9 @@ for (row in 1:NROW(transects)) {
   site_sub <- transects[row, ]
   
   # Getting siteID
-  SiteID <- site_sub[,17]
-  
+  SiteID <- as.data.frame(site_sub[,4])
+  SiteID <- SiteID[,-2] # remove geometry
+
   # Create a buffer around the site
   site_buffer <- st_buffer(site_sub[, "geometry"], dist = 100, endCapStyle="FLAT")
   site_buffer_terra <- vect(site_buffer) # SpatVector
@@ -278,10 +280,13 @@ for (row in 1:NROW(transects)) {
 str(trans_site_covs)
 print(trans_site_covs)
 
+# Removing Rnded_Lgth, Nsegs, RowN, sgT_lgh_m, sgT_Lgh_km, geometry
+site_covs <- trans_site_covs[,-c(1:3, 5:7)]
+print(site_covs)
 
 # Export data
-write.csv(trans_site_covs, "./Data/Survey_Data/Helicopter_Data/Heli_segTransect_siteCovs.csv")
+write.csv(site_covs, "./Data/Survey_Data/Helicopter_Data/Heli_segTransect_siteCovs.csv")
 
 
 
-# End Script
+# ----------------------------- End of Script -----------------------------
