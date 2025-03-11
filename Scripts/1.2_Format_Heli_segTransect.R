@@ -45,7 +45,7 @@ transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_Transe
 boundary <- st_read("./Data/Spatial_Data/La_Copita_Boundary")
 
 # Read the .csv data file
-heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Helicopter_Survey_Data_Fall2023-Winter2025.csv")
+heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Raw_Data/Helicopter_Survey_Data_Fall2023-Winter2025.csv")
  
 # ------------------------------------------------------------------------------
 #
@@ -332,6 +332,13 @@ ggplot(segmented_transects) +
 # Okay now that everything is segmented, buffer each transect by 100m.
 segmented_transects$Buffer <- st_buffer(segmented_transects$Segmented_Geometry, dist = 100, endCapStyle="FLAT")
 
+# Calculate length of each segmented transect 
+segmented_transects$segT_Lgh_m <- st_length(segmented_transects$Segmented_Geometry) # in meters
+segmented_transects$segT_Lgh_km <- as.numeric(segmented_transects$segT_Lgh_m) / 1000 # in kilometers
+
+# Take a look
+colnames(segmented_transects)
+
 # Plot the segmented transects with buffer
 ggplot(segmented_transects) +
   geom_sf(aes(geometry = Buffer, fill = as.factor(Segment_ID %% 2)), alpha = 0.3) + 
@@ -352,31 +359,42 @@ within_buffer <- st_within(heli_dat_clean_sf, segmented_transects$Buffer)
 # Assign segment transect ID to observation
 heli_dat_clean$segT_ID <- sapply(within_buffer, function(x) ifelse(length(x) > 0, segmented_transects$segID[x[1]], NA))
 
-# Take a look
-head(heli_dat_clean)
-
-# Extract the coordinates from the geometry column
-heli_dat_clean$geometry <- st_transform(heli_dat_clean$geometry, crs = 4326)
-heli_dat_clean$longitude <- st_coordinates(heli_dat_clean$geometry)[, 1]
-heli_dat_clean$latitude <- st_coordinates(heli_dat_clean$geometry)[, 2]
+# Assign segment transect length to observation, matching on segT_ID
+heli_dat_clean$segT_Lgh_km <- segmented_transects$segT_Lgh_km[
+                                    match(heli_dat_clean$segT_ID, segmented_transects$segID)]
 
 # Take a look
-head(heli_dat_clean)
+head(heli_dat_clean, 5)
+
+# -------------------------------------------------
+# Cleaning 
+# -------------------------------------------------       
+ 
+
+# Removing transect_ID, transect length, geometry and lat and long columns
+heli_dat_clean <- heli_dat_clean[,-c(3:4, 18)]
+
+# Reorder the dataframe
+colnames(heli_dat_clean) <- c("Study_Area", "Area_ha", "segT_ID", "segT_Lgh_km", "Flight_Path", "Date", 
+                              "Female", "Fawn", "Male_Young", "Male_Middle", "Male_Mature", "Males", 
+                              "Male_Unkown", "Unknown", "Direction_clock", "Detection_Distance", 
+                              "Survey_Time", "Degree", "Perpendicular_Distance", "Group_size")
+# Print to check
+head(heli_dat_clean, 5)
 
 # -------------------------------------------------
 # Exporting 
 # -------------------------------------------------       
 
-# Removing geometry column and lat and long
-heli_dat_clean <- heli_dat_clean[,-c(18)]
-
 # Saving helicopter data as CSV
 write.csv(heli_dat_clean, "./Data/Survey_Data/Helicopter_Data/Formatted_Heli_segTransect_Data.csv")
 
 # Saving segmented transects
-st_write(segmented_transects, append = TRUE, 
+# Errors are for long names and buffers
+# Names are abreviated and buffers are removed
+st_write(segmented_transects, append = TRUE,
          "./Data/Spatial_Data/Helicopter_Transects/Helicopter_SegmentedTransects.shp")
 
 
 
-# End Script
+# ----------------------------- End of Script -----------------------------
