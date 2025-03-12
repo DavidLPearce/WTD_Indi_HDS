@@ -20,7 +20,7 @@
 # Install packages (if needed)
 # install.packages("Distance")
 
-# # Load packages
+# Load packages
 library(Distance)
 
 # Set seed, scientific notation, and workplace
@@ -259,7 +259,10 @@ F23_abund <-  dht2(ddf = F23_hr_null$ddf,
                         
 print(F23_abund, report = "density")   # Density of ~ 0.37 deer per hectare                  
 print(F23_abund, report = "abundance") # Total abundance of 409 on property                       
-                        
+ 
+# Export best model
+saveRDS(F23_hr_null, "./Model_Objects/F23_Heli_DS_BestModel.rds")
+
                         
 # -------------------------------------------------------
 #                     Winter 2024
@@ -376,6 +379,8 @@ W24_abund <-  dht2(ddf = W24_hn_fit1$ddf,
 print(W24_abund, report = "density")   # Density of ~ 0.19 deer per hectare                  
 print(W24_abund, report = "abundance") # Total abundance of 219 on property                       
 
+# Export best model
+saveRDS(W24_hn_fit1, "./Model_Objects/W24_Heli_DS_BestModel.rds")
 
 
 # -------------------------------------------------------
@@ -493,6 +498,9 @@ F24_abund <-  dht2(ddf = F24_hn_fit2$ddf,
 print(F24_abund, report = "density")   # Density of ~ 0.15 deer per hectare                  
 print(F24_abund, report = "abundance") # Total abundance of 168 on property                       
 
+# Export best model
+saveRDS(F24_hn_fit2, "./Model_Objects/F24_Heli_DS_BestModel.rds")
+
 
 # -------------------------------------------------------
 #                     Winter 2025
@@ -609,6 +617,8 @@ W25_abund <-  dht2(ddf = W25_hn_null$ddf,
 print(W25_abund, report = "density")   # Density of ~ 0.21 deer per hectare                  
 print(W25_abund, report = "abundance") # Total abundance of 239 on property                       
 
+# Export best model
+saveRDS(W25_hn_null, "./Model_Objects/W25_Heli_DS_BestModel.rds")
 
 
 # ----------------------------- End of Script -----------------------------
