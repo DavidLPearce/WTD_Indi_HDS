@@ -42,6 +42,62 @@ F24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall
 #
 # ------------------------------------------------------------------------------
 
+# -------------------------------------------------
+# Format Date and Time  
+# -------------------------------------------------
+
+# Convert start_time to POSIXct format and extract Date, Time, Month, and Day of Year
+F23_cams <- F23_cams %>%
+  mutate(
+    start_time = mdy_hm(start_time),  # Convert to date-time format (YYYY-MM-DD HH:MM)
+    date = as.Date(start_time),       # Extract Date
+    time = format(start_time, "%H:%M"),  # Extract Time (HH:MM)
+    month = month(start_time, label = TRUE, abbr = FALSE),  # Extract Month Name
+    day_of_year = yday(start_time)  # Extract Day of Year
+  )
+
+# Take a look
+head(F23_cams)
+
+# Other Seasons
+W24_cams <- W24_cams %>%
+  mutate(
+    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
+    date = as.Date(start_time),       
+    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
+    month = month(start_time, label = TRUE, abbr = FALSE),  
+    day_of_year = yday(start_time)   
+  )
+head(W24_cams)
+
+F24_cams <- F24_cams %>%
+  mutate(
+    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
+    date = as.Date(start_time),       
+    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
+    month = month(start_time, label = TRUE, abbr = FALSE),  
+    day_of_year = yday(start_time)   
+  )
+head(F24_cams)
+
+# -------------------------------------------------
+# Column for Survey Start and End 
+# -------------------------------------------------
+
+# Survey Start
+F23_cams$survey_start <- min(F23_cams$day_of_year, na.rm = TRUE)
+W24_cams$survey_start <- min(W24_cams$day_of_year, na.rm = TRUE)
+F24_cams$survey_start <- min(F24_cams$day_of_year, na.rm = TRUE)
+
+# Survey End
+F23_cams$survey_end <- max(F23_cams$day_of_year, na.rm = TRUE)
+W24_cams$survey_end <- max(W24_cams$day_of_year, na.rm = TRUE)
+F24_cams$survey_end <- max(F24_cams$day_of_year, na.rm = TRUE)
+
+# Take a look
+head(F23_cams, 5)
+head(W24_cams, 5)
+head(F24_cams, 5)
 
 # -------------------------------------------------
 # Subset to White-tailed Deer  
@@ -50,8 +106,6 @@ F24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall
 F23_wtd_cams <- F23_cams[which(F23_cams$common_name == "White-tailed Deer"),]
 W24_wtd_cams <- W24_cams[which(W24_cams$common_name == "White-tailed Deer"),]
 F24_wtd_cams <- F24_cams[which(F24_cams$common_name == "White-tailed Deer"),]
-
-
 
 # -------------------------------------------------
 # Extract site ID and site number  
@@ -82,43 +136,6 @@ F24_wtd_cams <- F24_wtd_cams %>%
   )
 head(F24_wtd_cams)
 
-# -------------------------------------------------
-# Format Date and Time  
-# -------------------------------------------------
-
-# Convert start_time to POSIXct format and extract Date, Time, Month, and Day of Year
-F23_wtd_cams <- F23_wtd_cams %>%
-  mutate(
-    start_time = mdy_hm(start_time),  # Convert to date-time format (YYYY-MM-DD HH:MM)
-    date = as.Date(start_time),       # Extract Date
-    time = format(start_time, "%H:%M"),  # Extract Time (HH:MM)
-    month = month(start_time, label = TRUE, abbr = FALSE),  # Extract Month Name
-    day_of_year = yday(start_time)  # Extract Day of Year
-  )
-
-# Take a look
-head(F23_wtd_cams)
-
-# Other Seasons
-W24_wtd_cams <- W24_wtd_cams %>%
-  mutate(
-    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
-    date = as.Date(start_time),       
-    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
-    month = month(start_time, label = TRUE, abbr = FALSE),  
-    day_of_year = yday(start_time)   
-  )
-head(W24_wtd_cams)
-
-F24_wtd_cams <- F24_wtd_cams %>%
-  mutate(
-    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
-    date = as.Date(start_time),       
-    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
-    month = month(start_time, label = TRUE, abbr = FALSE),  
-    day_of_year = yday(start_time)   
-  )
-head(F24_wtd_cams)
 
 
 # -------------------------------------------------
@@ -127,8 +144,8 @@ head(F24_wtd_cams)
 
 # Columns to keep
 keep_columns <- c("site_id", "site_number", "date",  "month", 
-                  "day_of_year", "time", "common_name", "group_size",    
-                  "age", "sex"   
+                  "day_of_year", "time", "survey_start", "survey_end",
+                  "common_name", "group_size", "age", "sex"   
 )
 
 # Subset 
