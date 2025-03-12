@@ -1,139 +1,176 @@
-## ------------------------------------------------------------------------------
-##
-##                               Loading R packages
-##
-## ------------------------------------------------------------------------------
+# Author: David L. Pearce
+# Description:
+#             TBD
 
- 
-library(dplyr)
-library(tidyr)
-library(lubridate)
-library(unmarked)
+# Citation: 
+#      TBD
 
 
-## ------------------------------------------------------------------------------
-##
-##                                 Reading in data
-##
-## ------------------------------------------------------------------------------
-
-fall23_cams <- read.csv("./Data/Survey_Data/Camera_Data/LaCopita_Cams_Fall2023.csv")
-
-wtd_dat <- fall23_cams[which(fall23_cams$common_name == "White-tailed Deer"),]
-
-
-
-# -------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-#                   Data Wrangling
+#                               Loading R packages
 #
-# -------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+## Install packages (if needed)
+# install.packages("tidyverse")
 
 
-wtd_dat$date <- as.POSIXct(wtd_dat$start_time, format = "%m/%d/%Y %H:%M")
-wtd_dat$date <- format(wtd_dat$date, "%Y-%m-%d")
+# Load library
+library(tidyverse)
 
 
-wtd_dat5day <- wtd_dat[which(wtd_dat$date == "2023-09-08" | wtd_dat$date == "2023-09-09"|
-                               wtd_dat$date == "2023-09-10" | wtd_dat$date == "2023-09-11" |
-                               wtd_dat$date == "2023-09-12"),]
+# Set seed, scientific notation options, and working directory
+set.seed(123)
+options(scipen = 9999)
+setwd(".")
 
 
-# Summarize data: count the number of detections by site and date
-summary_data <- wtd_dat %>%
-  group_by(deployment_id, date) %>%
-  summarise(deer_count = n()) %>%
-  ungroup()
-  
+# ------------------------------------------------------------------------------
+#
+#                                 Reading in data
+#
+# ------------------------------------------------------------------------------
 
-# Pivot the data to create a matrix (wide format)
-deer_matrix <- summary_data %>%
-  pivot_wider(names_from = date, values_from = deer_count, values_fill = 0)
+F23_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall2023.csv")
+W24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Winter2024.csv")
+F24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall2024.csv")
 
-deer_matrix<-as.data.frame(deer_matrix[,-1])
-
-
-
-# unmarked frame
-umf <- unmarkedFramePCount(y = deer_matrix)
+# ------------------------------------------------------------------------------
+#
+#                                 Data Wrangling    
+#
+# ------------------------------------------------------------------------------
 
 
-# Fit an N-mixture model (Poisson distributed abundance)
-fm <- pcount(~ 1 ~ 1, 
-             data = umf, K = 500)  # K is the upper bound for the abundance
+# -------------------------------------------------
+# Subset to White-tailed Deer  
+# -------------------------------------------------
+
+F23_wtd_cams <- F23_cams[which(F23_cams$common_name == "White-tailed Deer"),]
+W24_wtd_cams <- W24_cams[which(W24_cams$common_name == "White-tailed Deer"),]
+F24_wtd_cams <- F24_cams[which(F24_cams$common_name == "White-tailed Deer"),]
 
 
-# Extract site-level random effects (abundance estimates)
-ranef_obj <- ranef(fm)
-print(ranef_obj)  # Print to check the extracted random effects
 
-# Calculate the expected abundance at each site
-site_abundances <- bup(ranef_obj, stat = "mean")  # "bup" stands for Best Unbiased Predictor
+# -------------------------------------------------
+# Extract site ID and site number  
+# -------------------------------------------------
 
-# Sum the site-level abundances to get the total abundance for the ranch
-total_abundance <- sum(site_abundances)
+# Fall 2023
+F23_wtd_cams <- F23_wtd_cams %>%
+  mutate(
+    site_id = str_extract(deployment_id, "Site\\d+"), # Extracts "SiteNumber"
+    site_number = str_extract(deployment_id, "(?<=Site)\\d+")  # Extracts the number after "Site"
+  )
 
-# Display the total abundance
-print(total_abundance)
+# Take a look
+head(F23_wtd_cams)
+
+# Other seasons
+W24_wtd_cams <- W24_wtd_cams %>%
+  mutate(
+    site_id = str_extract(deployment_id, "Site\\d+"), 
+    site_number = str_extract(deployment_id, "(?<=Site)\\d+")   
+  )
+head(W24_wtd_cams)
+
+F24_wtd_cams <- F24_wtd_cams %>%
+  mutate(
+    site_id = str_extract(deployment_id, "Site\\d+"), # Extracts "TX_Grassland_LaCopita"
+    site_number = str_extract(deployment_id, "(?<=Site)\\d+")  # Extracts the number after "Site"
+  )
+head(F24_wtd_cams)
+
+# -------------------------------------------------
+# Format Date and Time  
+# -------------------------------------------------
+
+# Convert start_time to POSIXct format and extract Date, Time, Month, and Day of Year
+F23_wtd_cams <- F23_wtd_cams %>%
+  mutate(
+    start_time = mdy_hm(start_time),  # Convert to date-time format (YYYY-MM-DD HH:MM)
+    date = as.Date(start_time),       # Extract Date
+    time = format(start_time, "%H:%M"),  # Extract Time (HH:MM)
+    month = month(start_time, label = TRUE, abbr = FALSE),  # Extract Month Name
+    day_of_year = yday(start_time)  # Extract Day of Year
+  )
+
+# Take a look
+head(F23_wtd_cams)
+
+# Other Seasons
+W24_wtd_cams <- W24_wtd_cams %>%
+  mutate(
+    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
+    date = as.Date(start_time),       
+    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
+    month = month(start_time, label = TRUE, abbr = FALSE),  
+    day_of_year = yday(start_time)   
+  )
+head(W24_wtd_cams)
+
+F24_wtd_cams <- F24_wtd_cams %>%
+  mutate(
+    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
+    date = as.Date(start_time),       
+    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
+    month = month(start_time, label = TRUE, abbr = FALSE),  
+    day_of_year = yday(start_time)   
+  )
+head(F24_wtd_cams)
 
 
-# Set up bootstrapping
-set.seed(123)  # For reproducibility
-n_bootstrap <- 1000  # Number of bootstrap samples
+# -------------------------------------------------
+# Remove excess columns  
+# -------------------------------------------------
 
-# Initialize a vector to store bootstrap total abundance values
-bootstrap_totals <- numeric(n_bootstrap)
-
-# Bootstrap sampling
-for (i in 1:n_bootstrap) {
-  bootstrap_abundances <- sample(ranef_obj$state, replace = TRUE)  # Sample from the estimates
-  bootstrap_totals[i] <- sum(bootstrap_abundances)
-}
-
-# Calculate 95% confidence intervals (2.5% and 97.5% quantiles)
-ci_lower <- quantile(bootstrap_totals, 0.025)
-ci_upper <- quantile(bootstrap_totals, 0.975)
-
-print(c(ci_lower, ci_upper))  # Print the confidence intervals
-
-
-# Load ggplot2 library
-library(ggplot2)
-
-# Create a data frame for plotting
-plot_data <- data.frame(
-  estimate = total_abundance,
-  ci_lower = ci_lower,
-  ci_upper = ci_upper
+# Columns to keep
+keep_columns <- c("site_id", "site_number", "date",  "month", 
+                  "day_of_year", "time", "common_name", "group_size",    
+                  "age", "sex"   
 )
 
-# Create the plot
-ggplot(plot_data, aes(x = 1, y = estimate)) +
-  geom_point(size = 4) +  # Plot the point estimate for total abundance
-  geom_errorbar(aes(ymin = 200, ymax = 360), width = 0.01) +  # Add confidence intervals
-  labs(
-    x = "N-mix",
-    y = "Total Abundance",
-    title = "Total Abundance of Deer with 95% Confidence Intervals"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+# Subset 
+F23_wtd_cams <- F23_wtd_cams[ , keep_columns]
+W24_wtd_cams <- W24_wtd_cams[ , keep_columns]
+F24_wtd_cams <- F24_wtd_cams[ , keep_columns]
+
+# Take a look
+head(F23_wtd_cams)
+head(W24_wtd_cams)
+head(F24_wtd_cams)
 
 
-# Base R plot
-# Set up the plot area
-plot(plot_data$estimate, 
-     ylim = c(0, 500),  # Set y-axis limits from 0 to 500
-     xaxt = "n",        # Suppress x-axis
-     pch = 16,          # Solid circle for points
-     xlab = "N-mix", 
-     ylab = "N", 
-     main = "")
+# -------------------------------------------------
+# Order by Site, Date, Time 
+# -------------------------------------------------
 
-# Add custom x-axis labels
-axis(1, at = 1:nrow(plot_data), labels = plot_data$site)
+# Fall 2023
+F23_wtd_cams <- F23_wtd_cams %>%
+  mutate(site_number = as.numeric(site_number)) %>%  # site_number as numeric  
+  arrange(site_number, date, time)  # Order by site number, then date, then time
 
-# Add error bars for confidence intervals
-arrows(x0 = 1:nrow(plot_data), y0 = 200, 
-       x1 = 1:nrow(plot_data), y1 = 360, 
-       angle = 90, code = 3, length = 0.1, col = "blue")
+# View the sorted dataframe
+head(F23_wtd_cams)
+
+# Other Seasons
+W24_wtd_cams <- W24_wtd_cams %>%
+  mutate(site_number = as.numeric(site_number)) %>%  
+  arrange(site_number, date, time)
+head(W24_wtd_cams)
+
+F24_wtd_cams <- F24_wtd_cams %>%
+  mutate(site_number = as.numeric(site_number)) %>% 
+  arrange(site_number, date, time)  
+head(F24_wtd_cams)
+
+# -------------------------------------------------
+# Export 
+# -------------------------------------------------
+
+write.csv(F23_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2023.csv")
+write.csv(W24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Winter2024.csv")
+write.csv(F24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2024.csv")
+
+# ----------------------------- End of Script -----------------------------
