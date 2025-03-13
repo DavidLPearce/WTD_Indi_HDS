@@ -261,7 +261,7 @@ print(F23_abund, report = "density")   # Density of ~ 0.37 deer per hectare
 print(F23_abund, report = "abundance") # Total abundance of 409 on property                       
  
 # Export best model
-saveRDS(F23_hr_null, "./Model_Objects/F23_Heli_DS_BestModel.rds")
+saveRDS(F23_abund, "./Model_Objects/F23_Heli_DS_BestModel.rds")
 
                         
 # -------------------------------------------------------
@@ -380,7 +380,7 @@ print(W24_abund, report = "density")   # Density of ~ 0.19 deer per hectare
 print(W24_abund, report = "abundance") # Total abundance of 219 on property                       
 
 # Export best model
-saveRDS(W24_hn_fit1, "./Model_Objects/W24_Heli_DS_BestModel.rds")
+saveRDS(W24_abund, "./Model_Objects/W24_Heli_DS_BestModel.rds")
 
 
 # -------------------------------------------------------
@@ -499,7 +499,7 @@ print(F24_abund, report = "density")   # Density of ~ 0.15 deer per hectare
 print(F24_abund, report = "abundance") # Total abundance of 168 on property                       
 
 # Export best model
-saveRDS(F24_hn_fit2, "./Model_Objects/F24_Heli_DS_BestModel.rds")
+saveRDS(F24_abund, "./Model_Objects/F24_Heli_DS_BestModel.rds")
 
 
 # -------------------------------------------------------
