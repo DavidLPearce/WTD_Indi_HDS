@@ -204,66 +204,66 @@ tuning <- list(
 #                     Fall 2023
 # -------------------------------------------------------
 
-# ----------------------
-# Initial values
-# ----------------------
-F23_inits <- list(alpha = 0.1,               
-                 beta = 0.1,                
-                 sigma.sq.p = 0.1,
-                 N = apply(F23_spA_dat$y, 1, sum)
-) 
-
-# ----------------------
-# Detection Covariates
-# ----------------------
-
-# Fit 0: Null model 
-F23_fm0 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-                det.formula = ~ 1, 
-                data = F23_spA_dat,
-                family = 'Poisson',
-                inits = F23_inits, 
-                priors = priors,
-                tuning = tuning,
-                accept.rate = 0.43,
-                n.batch = n.batch,
-                batch.length = batch.length,
-                n.burn = n.burn,
-                n.thin = n.thin, 
-                n.chains = n.chains,
-                verbose = FALSE)
-
-# Fit 1: DOY Random Effect 
-F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-                det.formula = ~ (1|DOY), 
-                data = F23_spA_dat,
-                family = 'Poisson',
-                inits = F23_inits, 
-                priors = priors,
-                tuning = tuning,
-                accept.rate = 0.43,
-                n.batch = n.batch,
-                batch.length = batch.length,
-                n.burn = n.burn,
-                n.thin = n.thin, 
-                n.chains = n.chains,
-                verbose = FALSE)
-
-# Fit 2: DOY Random Effect - Negative Binomial 
-F23_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-                det.formula = ~ (1|DOY), 
-                data = F23_spA_dat,
-                family = 'NB',
-                inits = F23_inits, 
-                priors = priors,
-                tuning = tuning,
-                accept.rate = 0.43,
-                n.batch = n.batch,
-                batch.length = batch.length,
-                n.burn = n.burn,
-                n.thin = n.thin, 
-                n.chains = n.chains,
-                verbose = FALSE)
+# # ----------------------
+# # Initial values
+# # ----------------------
+# F23_inits <- list(alpha = 0.1,               
+#                  beta = 0.1,                
+#                  sigma.sq.p = 0.1,
+#                  N = apply(F23_spA_dat$y, 1, sum)
+# ) 
+# 
+# # ----------------------
+# # Detection Covariates
+# # ----------------------
+# 
+# # Fit 0: Null model 
+# F23_fm0 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
+#                 det.formula = ~ 1, 
+#                 data = F23_spA_dat,
+#                 family = 'Poisson',
+#                 inits = F23_inits, 
+#                 priors = priors,
+#                 tuning = tuning,
+#                 accept.rate = 0.43,
+#                 n.batch = n.batch,
+#                 batch.length = batch.length,
+#                 n.burn = n.burn,
+#                 n.thin = n.thin, 
+#                 n.chains = n.chains,
+#                 verbose = FALSE)
+# 
+# # Fit 1: DOY Random Effect 
+# F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
+#                 det.formula = ~ (1|DOY), 
+#                 data = F23_spA_dat,
+#                 family = 'Poisson',
+#                 inits = F23_inits, 
+#                 priors = priors,
+#                 tuning = tuning,
+#                 accept.rate = 0.43,
+#                 n.batch = n.batch,
+#                 batch.length = batch.length,
+#                 n.burn = n.burn,
+#                 n.thin = n.thin, 
+#                 n.chains = n.chains,
+#                 verbose = FALSE)
+# 
+# # Fit 2: DOY Random Effect - Negative Binomial 
+# F23_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
+#                 det.formula = ~ (1|DOY), 
+#                 data = F23_spA_dat,
+#                 family = 'NB',
+#                 inits = F23_inits, 
+#                 priors = priors,
+#                 tuning = tuning,
+#                 accept.rate = 0.43,
+#                 n.batch = n.batch,
+#                 batch.length = batch.length,
+#                 n.burn = n.burn,
+#                 n.thin = n.thin, 
+#                 n.chains = n.chains,
+#                 verbose = FALSE)
 
 # ----------------------
 # Checking Convergence
@@ -295,43 +295,43 @@ F23_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
 # Rank models 
 # ----------------------
 
-# Calculating WAIC
-F23_fm0_waic <- waicAbund(F23_fm0)
-F23_fm1_waic <- waicAbund(F23_fm1)
-F23_fm2_waic <- waicAbund(F23_fm2)
-
-# Extract the WAIC values for each model
-F23_waic_values <- c(F23_fm0_waic["WAIC"],
-                     F23_fm1_waic["WAIC"],
-                     F23_fm2_waic["WAIC"]
-)
-
-# Create a named vector with model names
-F23_names <- c("fm0", 
-               "fm1",
-               "fm2"
-)
-
-# Combine model names and WAIC values into a data frame for ranking
-F23_waic_df <- data.frame(Model = F23_names, 
-                          WAIC = F23_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-F23_waic_df <- F23_waic_df[order(F23_waic_df$WAIC), ]
-
-# Print the ranked models
-print(F23_waic_df)
-
-# Best model is ...
-
-# Check fit
-F23_bm_ppc <- ppcAbund(F23_fm2, fit.stat = "chi-squared", group = 1)
-summary(F23_bm_ppc)
-
-# Fit Nb is pretty good
-
-# Export best model
-saveRDS(F23_fm2, "./Model_Objects/F23_Cam_Nmix_BestModel.rds")
+# # Calculating WAIC
+# F23_fm0_waic <- waicAbund(F23_fm0)
+# F23_fm1_waic <- waicAbund(F23_fm1)
+# F23_fm2_waic <- waicAbund(F23_fm2)
+# 
+# # Extract the WAIC values for each model
+# F23_waic_values <- c(F23_fm0_waic["WAIC"],
+#                      F23_fm1_waic["WAIC"],
+#                      F23_fm2_waic["WAIC"]
+# )
+# 
+# # Create a named vector with model names
+# F23_names <- c("fm0", 
+#                "fm1",
+#                "fm2"
+# )
+# 
+# # Combine model names and WAIC values into a data frame for ranking
+# F23_waic_df <- data.frame(Model = F23_names, 
+#                           WAIC = F23_waic_values)
+# 
+# # Rank models based on WAIC (lower WAIC is better)
+# F23_waic_df <- F23_waic_df[order(F23_waic_df$WAIC), ]
+# 
+# # Print the ranked models
+# print(F23_waic_df)
+# 
+# # Best model is ...
+# 
+# # Check fit
+# F23_bm_ppc <- ppcAbund(F23_fm2, fit.stat = "chi-squared", group = 1)
+# summary(F23_bm_ppc)
+# 
+# # Fit Nb is pretty good
+# 
+# # Export best model
+# saveRDS(F23_fm2, "./Model_Objects/F23_Cam_Nmix_BestModel.rds")
 
 
 
@@ -460,13 +460,13 @@ W24_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
 # # Best model is ...
 
 # Check fit
-W24_bm_ppc <- ppcAbund(W24_fm2_waic, fit.stat = "chi-squared", group = 1)
+W24_bm_ppc <- ppcAbund(W24_fm2, fit.stat = "chi-squared", group = 1)
 summary(W24_bm_ppc)
 
 # Fit is not the best
 
 # Export best model
-saveRDS(W24_fm2_waic, "./Model_Objects/W24_Cam_Nmix_BestModel.rds")
+saveRDS(W24_fm2, "./Model_Objects/W24_Cam_Nmix_BestModel.rds")
 
 
 
@@ -653,21 +653,21 @@ W25_inits <- list(alpha = 0.1,
 #                 n.chains = n.chains,
 #                 verbose = FALSE)
 # 
-# # Fit 2: DOY Random Effect - Negative Binomial 
-# W25_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ (1|DOY), 
-#                 data = W25_spA_dat,
-#                 family = 'NB',
-#                 inits = W25_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
+# Fit 2: DOY Random Effect - Negative Binomial
+W25_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
+                det.formula = ~ (1|DOY),
+                data = W25_spA_dat,
+                family = 'NB',
+                inits = W25_inits,
+                priors = priors,
+                tuning = tuning,
+                accept.rate = 0.43,
+                n.batch = n.batch,
+                batch.length = batch.length,
+                n.burn = n.burn,
+                n.thin = n.thin,
+                n.chains = n.chains,
+                verbose = FALSE)
 
 # ----------------------
 # Checking Convergence
@@ -728,14 +728,14 @@ W25_inits <- list(alpha = 0.1,
 # 
 # # Best model is ...
 
-# Check fit
-W25_bm_ppc <- ppcAbund(W25_fm2, fit.stat = "chi-squared", group = 1)
-summary(W25_bm_ppc)
-
-# Fit is not the best
-
-# Export best model
-saveRDS(W25_fm2, "./Model_Objects/W25_Cam_Nmix_BestModel.rds")
+# # Check fit
+# W25_bm_ppc <- ppcAbund(W25_fm2, fit.stat = "chi-squared", group = 1)
+# summary(W25_bm_ppc)
+# 
+# # Fit is not the best
+# 
+# # Export best model
+# saveRDS(W25_fm2, "./Model_Objects/W25_Cam_Nmix_BestModel.rds")
 
 
 # ----------------------------- End of Script -----------------------------
