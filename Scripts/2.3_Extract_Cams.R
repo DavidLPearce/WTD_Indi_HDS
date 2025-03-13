@@ -49,7 +49,7 @@ setwd(".")
 # ------------------------------------------------------------------------------
 
 # Read in raster data
-lulc_rast <- stack("D:/LaCopita_GIS_Data/LaCopitaLULC/LaCopitaLULC_60cm_SVM/LULC_60cm_SVM_Raster/LaCopitaLULC_60cm_SVM.tif")
+lulc_rast <- stack("D:/LaCopita_GIS_Data/LaCopitaLULC/LaCopitaLULC_60cm_SVM_Buffered/LaCopitaLULC_60cm_SVM_Buffered.tif")
 print(lulc_rast)
 
 # Read in site locations
