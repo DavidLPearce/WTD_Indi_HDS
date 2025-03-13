@@ -94,6 +94,7 @@ fall24_dat <- heli_dat[which(heli_dat$Date ==  "9/6/2024" | heli_dat$Date == "9/
 win25_dat <- heli_dat[which(heli_dat$Date ==  "2/7/2025" | heli_dat$Date == "2/8/2025"),]
 
 # Adding an object column for unique ID - Distance Package naming scheme
+heli_dat$object <- rownames(heli_dat) 
 fall23_dat$object <- rownames(fall23_dat)         
 win24_dat$object <- rownames(win24_dat)         
 fall24_dat$object <- rownames(fall24_dat)         
@@ -242,14 +243,14 @@ print(model_AIC)
 # No support for covariates. Best model is just the hazard rate detection function
 
 # Plot detection probabililty by distance bin
-plot(F23_hr_fit3, breaks= c(0,20,40,60,100), main="Fall '23")
+plot(F23_hr_null, breaks= c(0,20,40,60,100), main="Fall '23")
 
 # Goodness of fit
-gof_ds(F23_hr_fit1) 
+gof_ds(F23_hr_null) 
 
 
 # Getting estimates of abundance
-F23_abund <-  dht2(ddf = F23_hr_fit1$ddf,
+F23_abund <-  dht2(ddf = F23_hr_null$ddf,
                    flatfile = fall23_dat,
                    stratification = "replicate",
                    strat_formula = ~ replicate,
@@ -257,8 +258,8 @@ F23_abund <-  dht2(ddf = F23_hr_fit1$ddf,
 )
 
 
-print(F23_abund, report = "density")   # Density of ~ 0.0025 deer per hectare                  
-print(F23_abund, report = "abundance") # Total abundance of 94.77 on property                       
+print(F23_abund, report = "density")   # Density of ~ 0.0008 deer per hectare                  
+print(F23_abund, report = "abundance") # Total abundance of 1 on property                       
 
 
 # -------------------------------------------------------
@@ -610,6 +611,120 @@ W25_abund <-  dht2(ddf = W25_hn_null$ddf,
 print(W25_abund, report = "density")   # Error - not giving good estimates                
 print(W25_abund, report = "abundance")                         
 
+# -------------------------------------------------------
+#                     All Data
+# -------------------------------------------------------
+
+# ----------------------
+# Detection Function
+# ----------------------
+
+# Half normal detection function model
+AllData_hn_null <- ds(data = heli_dat,
+                      formula = ~ 1,      
+                      transect = "line",  
+                      key = "hn",       
+                      dht_group = FALSE,   
+                      adjustment = NULL,  
+                      convert_units = conversion.factor,
+)
+
+# Half normal detection function model
+AllData_hr_null <- ds(data = heli_dat,
+                      formula = ~ 1,
+                      transect = "line",  
+                      key = "hr",  
+                      dht_group = FALSE,  
+                      adjustment = NULL, 
+                      convert_units = conversion.factor,
+)
+
+
+# Model comparison table
+model_AIC <- AIC(AllData_hr_null, AllData_hr_null) # Extract AIC
+model_AIC <- model_AIC[order(model_AIC$AIC), ] # Order 
+print(model_AIC)
+
+
+# Can see Half-Normal is the better model
+
+# Goodness of fit
+gof_ds(AllData_hr_null)  
+
+# ----------------------
+# Covariates
+# ----------------------
+
+# Group size
+AllData_hr_fit1 <- ds(data = heli_dat, 
+                      formula = ~ size, 
+                      transect = "line",  
+                      key = "hr", 
+                      dht_group = FALSE, 
+                      adjustment = NULL, 
+                      convert_units = conversion.factor,
+)
+
+
+# Replicate (Evening or Morning) 
+AllData_hr_fit2 <- ds(data = heli_dat, 
+                      formula = ~ factor(replicate) ,
+                      transect = "line", 
+                      key = "hr",  
+                      dht_group = FALSE,  
+                      adjustment = NULL, 
+                      convert_units = conversion.factor,  
+)
+
+
+# Woody Aggregation Index
+AllData_hr_fit3 <- ds(data = heli_dat, 
+                      formula = ~ scale(woody_AggInx),
+                      transect = "line", 
+                      key = "hr",  
+                      dht_group = FALSE, 
+                      adjustment = NULL, 
+                      convert_units = conversion.factor, 
+)
+
+# Woody Largest Patch Index
+AllData_hr_fit4 <- ds(data = heli_dat, 
+                      formula = ~ scale(woody_lrgPInx),
+                      transect = "line", 
+                      key = "hr",  
+                      dht_group = FALSE, 
+                      adjustment = NULL, 
+                      convert_units = conversion.factor, 
+)
+
+
+
+
+# Model comparison table
+model_AIC <- AIC(AllData_hr_null, AllData_hr_fit1, AllData_hr_fit2, AllData_hr_fit3, AllData_hr_fit4) # Extract AIC
+model_AIC <- model_AIC[order(model_AIC$AIC), ] # Order 
+print(model_AIC)
+
+# Best model was Null: No covariates on detection
+
+# Plot detection probability by distance bin
+plot(AllData_hr_fit3, breaks= c(0, 20, 40, 60, 100), main = "Winter '25")
+
+# Goodness of fit
+gof_ds(AllData_hr_fit3) # Chi-square shows a pretty good fit
+
+
+# Getting estimates of abundance
+AllData_abund <-  dht2(ddf = AllData_hr_fit3$ddf,
+                       flatfile = heli_dat,
+                       stratification = "replicate",
+                       strat_formula = ~ replicate,
+                       convert_units = conversion.factor
+)
+
+
+print(AllData_abund, report = "density")   # Error - not giving good estimates                
+print(AllData_abund, report = "abundance")                         
 
 
 # ----------------------------- End of Script -----------------------------
