@@ -32,9 +32,11 @@ setwd(".")
 #
 # ------------------------------------------------------------------------------
 
+# Read in camera trapping data
 F23_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall2023.csv")
 W24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Winter2024.csv")
 F24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall2024.csv")
+ 
 
 # ------------------------------------------------------------------------------
 #
@@ -46,42 +48,32 @@ F24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall
 # Format Date and Time  
 # -------------------------------------------------
 
-# Convert start_time to POSIXct format and extract Date, Time, Month, and Day of Year
-F23_cams <- F23_cams %>%
+# Some datasets are in different formats. Creating afunction to standardize
+cam_datetime_func <- function(df) {
+df <- df %>%
   mutate(
-    start_time = mdy_hm(start_time),                        # Convert to date-time format (YYYY-MM-DD HH:MM)
-    date = as.Date(start_time),                             # Extract Date
-    time = format(start_time, "%H:%M"),                     # Extract Time (HH:MM)
-    month = month(start_time, label = TRUE, abbr = FALSE),  # Extract Month Name
-    day_of_year = yday(start_time),                         # Extract Day of Year
-    date_time = start_time
-)
-
-# Take a look
-head(F23_cams)
-
-# Other Seasons
-W24_cams <- W24_cams %>%
-  mutate(
-    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
-    date = as.Date(start_time),       
-    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
-    month = month(start_time, label = TRUE, abbr = FALSE),  
-    day_of_year = yday(start_time),
-    date_time = start_time
+    start_time = parse_date_time(start_time, orders = c("mdY HM", "mdY HMS", "Ymd HMS")),  # Standardize format
+    end_time = parse_date_time(end_time, orders = c("mdY HM", "mdY HMS", "Ymd HMS")),      # Standardize format
+    date = as.Date(start_time),                                                            # Extract date
+    time = format(start_time, "%H:%M:%S"),                                                 # Extract time (HH:MM:SS)
+    month = month(start_time, label = TRUE, abbr = FALSE),                                 # Extract month name
+    day_of_year = yday(start_time),                                                        # Extract day of the year
+    date_time = start_time                                                                 # Keep a full datetime column
   )
-head(W24_cams)
+  
+  return(df)
+}
 
-F24_cams <- F24_cams %>%
-  mutate(
-    start_time = ymd_hms(start_time),       # Convert to date-time format (YYYY-MM-DD HH:MM:SS)
-    date = as.Date(start_time),       
-    time = format(start_time, "%H:%M:%S"),  # Extract Time in HH:MM:SS format
-    month = month(start_time, label = TRUE, abbr = FALSE),  
-    day_of_year = yday(start_time),
-    date_time = start_time
-  )
-head(F24_cams)
+# Apply the function to each dataset
+F23_cams <- cam_datetime_func(F23_cams)
+W24_cams <- cam_datetime_func(W24_cams)
+F24_cams <- cam_datetime_func(F24_cams)
+
+# Check the first few rows
+head(F23_cams, 5)
+head(W24_cams, 5)
+head(F24_cams, 5)
+
 
 # -------------------------------------------------
 # Column for Survey Start and End 
@@ -189,8 +181,9 @@ head(F24_wtd_cams)
 # Export 
 # -------------------------------------------------
 
-write.csv(F23_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2023.csv")
-write.csv(W24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Winter2024.csv")
-write.csv(F24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2024.csv")
+saveRDS(F23_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2023.rds")
+saveRDS(W24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Winter2024.rds")
+saveRDS(F24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2024.rds")
 
 # ----------------------------- End of Script -----------------------------
+
