@@ -618,7 +618,7 @@ print(W25_abund, report = "density")   # Density of ~ 0.21 deer per hectare
 print(W25_abund, report = "abundance") # Total abundance of 239 on property                       
 
 # Export best model
-saveRDS(W25_hn_null, "./Model_Objects/W25_Heli_DS_BestModel.rds")
+saveRDS(W25_abund, "./Model_Objects/W25_Heli_DS_BestModel.rds")
 
 
 # ----------------------------- End of Script -----------------------------
