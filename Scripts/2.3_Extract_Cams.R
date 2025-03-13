@@ -42,12 +42,6 @@ setwd(".")
 #
 # ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-#
-#                                 Load Data
-#
-# ------------------------------------------------------------------------------
-
 # Read in raster data
 lulc_rast <- stack("D:/LaCopita_GIS_Data/LaCopitaLULC/LaCopitaLULC_60cm_SVM_Buffered/LaCopitaLULC_60cm_SVM_Buffered.tif")
 print(lulc_rast)
