@@ -177,13 +177,22 @@ F23_abund <-  dht2(ddf = F23_fit1$ddf,
                       strat_formula = ~ replicate,
                       convert_units = conversion.factor
 )
-                       
-                        
-print(F23_abund, report = "density")                   
-print(F23_abund, report = "abundance")                     
+
+# Organize into a dataframe
+F23_DS_est <- data.frame(Model = "Heli DS",
+                         Season = "Fall 2023",
+                         Season_Model = "F23 Heli DS",
+                         Data = "Helicopter",
+                         N = F23_abund$Abundance[3],
+                         LCI = F23_abund$LCI[3],
+                         UCI = F23_abund$UCI[3]
+)
+
+# Take a look
+print(F23_DS_est)
  
 # Export best model
-saveRDS(F23_abund, "./Model_Objects/F23_Heli_DS_AbundEst.rds")
+saveRDS(F23_DS_est, "./Model_Objects/F23_Heli_DS_AbundEst.rds")
 
                         
 # -------------------------------------------------------
@@ -217,12 +226,21 @@ W24_abund <-  dht2(ddf = W24_fit1$ddf,
                    convert_units = conversion.factor
 )
 
+# Organize into a dataframe
+W24_DS_est <- data.frame(Model = "Heli DS",
+                         Season = "Winter 2024",
+                         Season_Model = "W24 Heli DS",
+                         Data = "Helicopter",
+                         N = W24_abund$Abundance[3],
+                         LCI = W24_abund$LCI[3],
+                         UCI = W24_abund$UCI[3]
+)
 
-print(W24_abund, report = "density")                      
-print(W24_abund, report = "abundance")                    
+# Take a look
+print(W24_DS_est)                 
 
 # Export best model
-saveRDS(W24_abund, "./Model_Objects/W24_Heli_DS_AbundEst.rds")
+saveRDS(W24_DS_est, "./Model_Objects/W24_Heli_DS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -258,11 +276,21 @@ F24_abund <-  dht2(ddf = F24_fit1$ddf,
 )
 
 
-print(F24_abund, report = "density")                  
-print(F24_abund, report = "abundance")                       
+# Organize into a dataframe
+F24_DS_est <- data.frame(Model = "Heli DS",
+                         Season = "Fall 2024",
+                         Season_Model = "F24 Heli DS",
+                         Data = "Helicopter",
+                         N = F24_abund$Abundance[3],
+                         LCI = F24_abund$LCI[3],
+                         UCI = F24_abund$UCI[3]
+)
+
+# Take a look
+print(F24_DS_est)                           
 
 # Export best model
-saveRDS(F24_abund, "./Model_Objects/F24_Heli_DS_AbundEst.rds")
+saveRDS(F24_DS_est, "./Model_Objects/F24_Heli_DS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -295,12 +323,21 @@ W25_abund <-  dht2(ddf = W25_fit1$ddf,
                    convert_units = conversion.factor
 )
 
+# Organize into a dataframe
+W25_DS_est <- data.frame(Model = "Heli DS",
+                         Season = "Winter 2025",
+                         Season_Model = "W25 Heli DS",
+                         Data = "Helicopter",
+                         N = W25_abund$Abundance[3],
+                         LCI = W25_abund$LCI[3],
+                         UCI = W25_abund$UCI[3]
+)
 
-print(W25_abund, report = "density")                   
-print(W25_abund, report = "abundance")                       
+# Take a look
+print(W25_DS_est)                       
 
 # Export best model
-saveRDS(W25_abund, "./Model_Objects/W25_Heli_DS_AbundEst.rds")
+saveRDS(W25_DS_est, "./Model_Objects/W25_Heli_DS_AbundEst.rds")
 
 
 # ----------------------------- End of Script -----------------------------
