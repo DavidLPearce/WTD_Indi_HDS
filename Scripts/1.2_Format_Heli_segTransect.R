@@ -263,22 +263,66 @@ heli_dat_clean$Group_size <- rowSums(heli_dat_clean[,c(7:13)])
 # Summing all males rowwise
 heli_dat_clean$Males <- rowSums(heli_dat_clean[,c(9:12)])
 
-
+# -------------------------------------------------
+# Getting Segment Transects 
+# -------------------------------------------------       
 
 # Need to segment transects and determine which segment an observation was in.
+
+# ----------------------
+# 200m 
+# ----------------------      
+
+# *** NOTE: this did not work for modeling ***
 # To do this need to round to the nearest 200m since viewshed was 100m on either side of the transect.
 
-# Function to round to the nearest multiple of 0.2 km
-round_200m <- function(x) {
-  round(x / 200) * 200
+# # Function to round to the nearest multiple of 0.2 km
+# round_200m <- function(x) {
+#   round(x / 200) * 200
+# }
+# 
+# # Number of segments
+# transects <- transects %>%
+#   mutate(Rnded_Lgth = round_200m(T_Length),  # Round length
+#          Nsegs = Rnded_Lgth / 200)  # Calculate number of 200m segments
+# 
+# # Function to segment a transects into equal 200m segments
+# segment_transect <- function(line, Nsegs) {
+#   if (Nsegs < 2) return(st_sfc(line))  # If only one segment, return original line
+#   
+#   # Generate fraction points along the line at equal intervals
+#   fractions <- seq(0, 1, length.out = Nsegs + 1)
+#   segment_points <- st_line_sample(line, sample = fractions)
+#   
+#   # Convert sample points to coordinates
+#   coords <- st_coordinates(segment_points)
+#   
+#   # Create segments by connecting consecutive points
+#   segments <- map(seq_len(nrow(coords) - 1), function(i) {
+#     st_linestring(rbind(coords[i,], coords[i+1,])) %>%
+#       st_sfc(crs = st_crs(line))
+#   })
+#   
+#   return(do.call(c, segments))  # Return all segments
+# }
+
+# ----------------------
+# 625m 
+# ----------------------      
+
+# 625m should be a decent trade off with number of transects and landscape heterogeneity 
+
+# Function to round to the nearest multiple of 625 m (0.625 km)
+round_625m <- function(x) {
+  round(x / 625) * 625
 }
 
-# Number of segments
+# Data: Transect lengths (replace T_Length with your column name)
 transects <- transects %>%
-  mutate(Rnded_Lgth = round_200m(T_Length),  # Round length
-         Nsegs = Rnded_Lgth / 200)  # Calculate number of 200m segments
+  mutate(Rnded_Lgth = round_625m(T_Length),  # Round length to nearest 625m
+         Nsegs = Rnded_Lgth / 625)  # Calculate number of 625m segments
 
-# Function to segment a transects into equal 200m segments
+# Function to segment a transect into equal 625m segments
 segment_transect <- function(line, Nsegs) {
   if (Nsegs < 2) return(st_sfc(line))  # If only one segment, return original line
   
@@ -297,6 +341,21 @@ segment_transect <- function(line, Nsegs) {
   
   return(do.call(c, segments))  # Return all segments
 }
+
+# # Apply segmentation function to each transect
+# transects <- transects %>%
+#   rowwise() %>%
+#   mutate(Geometry_Segments = list(segment_transect(geometry, Nsegs))) %>%
+#   ungroup()
+# 
+# # Convert segmented geometries to an sf object
+# segmented_transects <- st_sf(transects %>% select(-geometry), geometry = st_sfc(do.call(c, transects$Geometry_Segments)))
+
+# ----------------------
+# Segment and Bin Observations
+# ----------------------
+
+
 
 # Segment each transect
 segmented_transects <- transects %>%
