@@ -171,7 +171,7 @@ F23_hr_null <- ds(data = fall23_dat,
                   key = "hr",  
                   dht_group = FALSE,  
                   adjustment = NULL, 
-                  convert_units = conversion.factor,
+                  convert_units = conversion.factor
 )
 
 
