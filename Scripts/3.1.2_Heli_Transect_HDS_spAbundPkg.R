@@ -21,10 +21,14 @@
 # Install packages (if needed)
 # install.packages("tidyverse")
 # install.packages("spAbundance")
+# install.packages("sf")
+# install.packages("sp")
 
 # Load library
 library(tidyverse)
 library(spAbundance)
+library(sf)
+library(sp)
 
 # Set seed, scientific notation options, and working directory
 set.seed(123)
@@ -49,6 +53,12 @@ site_covs <- read.csv("./Data/Survey_Data/Helicopter_Data/Heli_Transect_siteCovs
 # Take a look at the data
 head(site_covs, 5)
 
+# Read in transects
+transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_Transects.shp")
+# Take a look at the data
+head(transects, 5)
+
+
 # ------------------------------------------------------------------------------
 #
 #                               Data Wrangling
@@ -56,7 +66,31 @@ head(site_covs, 5)
 # ------------------------------------------------------------------------------
 
 # ----------------------
-# Addign a Survey Code
+# Transect Effort
+# ----------------------
+
+# Data frame for transect ID, length and the viewshed
+transect_effort <- data.frame(Transect_ID = 1:12,
+                              Transect_Length_km = c(2.94, 4.99, 4.99, 4.99, 4.68, 4.74,
+                                                     4.79, 4.84, 1.25, 1.25, 1.25, 1.25),
+                              ViewShed_m = 100 
+  
+)
+
+# Convert Transect Length (km to meters) and calculate total area covered
+transect_effort <- transect_effort %>%
+  mutate(
+    Transect_Length_m = Transect_Length_km * 1000,  # Convert km to meters
+    Area_m2 = Transect_Length_m * (2 * ViewShed_m),  # Compute area in m²
+    Area_ha = Area_m2 / 10000,  # Convert to hectares
+    Area_ac = Area_m2 / 4046.86  # Convert to acres
+  )
+
+# Print result
+print(transect_effort)
+
+# ----------------------
+# Adding a Survey Code
 # ----------------------
 
 # Convert Survey_Time to 1 = evening, and 2 = morning
@@ -380,22 +414,93 @@ F24spA_site_covs <- spA_site_covs %>%
 W25spA_site_covs <- spA_site_covs %>%
   mutate(Transect_Survey = paste(SiteID, SurveyTime, sep = "_")) %>% 
   left_join(W25_mnGS_full, by = "Transect_Survey") 
- 
+
+
+
+# ----------------------
+# Formatting Transects
+# ----------------------
+
+# spDS does not allow duplicate site coordinates
+# since observation data has replicates and they are
+# stacked. A set of the transects coordinates needs to 
+# change slightly
+
+# Apply shift function to each geometry in the sf object
+transects_shifted <- transects %>%
+  mutate(OriginX = OriginX + 0.1,  # Shift X by 1 m
+         OriginY = OriginY + 0.1)  # Shift Y by 1 m
+
+# Modify IDs for original transects
+transects <- transects %>%
+  mutate(ID = paste0(ID, "_1"),
+         Shifted = "No")  
+
+# Modify IDs for shifted transects
+transects_shifted <- transects_shifted %>%
+  mutate(ID = paste0(ID, "_2"),
+         Shifted = "Yes")  
+
+# Combine both into a single sf object
+transects_combined <- bind_rows(transects, transects_shifted)
+
+# Extracting transect coordinates
+transect_coords <- transects_combined %>%
+  select(OriginX, OriginY)
+
+# Remove geometry
+transect_coords <- as.data.frame(transect_coords)
+transect_coords <- transect_coords[,-3]
+
+# Take a look
+print(transect_coords)
+
+# ----------------------
+# Offset
+# ----------------------
+
+# Since there are two replicates each transect needs to be represented twice
+offset <- c(transect_effort[,'Area_ac'], transect_effort[,'Area_ac'])
+
+
 # ----------------------
 # spAbundance Format
 # ----------------------
 
 # spAbundance use long formatting
-F23spA_dat <- list(y = fall23_mat, covs = F23spA_site_covs, dist.breaks = c(0, 20, 40, 60, 100)) 
-W24spA_dat <- list(y = win24_mat, covs = W24spA_site_covs, dist.breaks = c(0, 20, 40, 60, 100))  
-F24spA_dat <- list(y = fall24_mat, covs = F24spA_site_covs, dist.breaks = c(0, 20, 40, 60, 100))  
-W25spA_dat <- list(y = win25_mat, covs = W25spA_site_covs, dist.breaks = c(0, 20, 40, 60, 100))  
+F23_spA_dat <- list(y = fall23_mat, 
+                   covs = F23spA_site_covs, 
+                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   dist.breaks = c(0, 20, 40, 60, 100),
+                   offset = offset
+) 
+
+W24_spA_dat <- list(y = win24_mat, 
+                   covs = W24spA_site_covs,
+                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   dist.breaks = c(0, 20, 40, 60, 100),
+                   offset = offset
+)
+
+F24_spA_dat <- list(y = fall24_mat, 
+                   covs = F24spA_site_covs,
+                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   dist.breaks = c(0, 20, 40, 60, 100),
+                   offset = offset
+) 
+
+W25_spA_dat <- list(y = win25_mat, 
+                   covs = W25spA_site_covs, 
+                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   dist.breaks = c(0, 20, 40, 60, 100),
+                   offset = offset
+)  
  
 # Take a look
-str(F23spA_dat)
-str(W24spA_dat)
-str(F24spA_dat)
-str(W25spA_dat)
+str(F23_spA_dat)
+str(W24_spA_dat)
+str(F24_spA_dat)
+str(W25_spA_dat)
 
  
 # ------------------------------------------------------------------------------
@@ -415,25 +520,41 @@ batch.length * n.batch # Total number of MCMC samples per chain
 n.burn <- 60000
 n.thin <- 10
 n.chains <- 3
+n.report <- 5000
+n.omp.threads <- 6
 
+# ----------------------
+# Site Distance
+# ----------------------
+
+# Pair-wise distances between all sites
+dist_mat <- dist(transect_coords[,c('OriginX', 'OriginY')])
 
 # ----------------------
 # Set Priors
 # ----------------------
 priors <- list(alpha.normal = list(mean = 0, var = 10),  
                beta.normal = list(mean = 0, var = 10),
-               sigma.sq.p.ig = list(mean = 0, var = 2.72)
+               kappa.unif = c(0, 100),
+               sigma.sq.p.ig = list(mean = 0, var = 2.72),
+               phi.unif = c(3 / max(dist_mat), 3 / min(dist_mat))
 )
 
 # ----------------------
 # Tuning
 # ----------------------
-tuning <- list(
-  alpha = 0.25,  
-  beta = 0.25,
-  alpha.star = 0.25
-) 
+tuning <- list(beta = 0.5, 
+               alpha = 0.5,
+               kappa = 0.5, 
+               beta.star = 0.5,
+               alpha.star = 0.5,
+               w = 0.5, 
+               phi = 0.5
+)
 
+# ----------------------
+# Initial values
+# ----------------------
 
 # Initial values are by data set
 
@@ -445,262 +566,97 @@ tuning <- list(
 # ----------------------
 # Initial values
 # ----------------------
-F23inits <- list(alpha = 0.1,               
-                 beta = 0.1,                
-                 sigma.sq.p = 0.1,
-                 N = apply(F23spA_dat$y, 1, sum)
-) 
- 
+F23_inits <- list(beta = 0, 
+                  alpha = 0, 
+                  kappa = 1,
+                  sigma.sq.p = 0.1,
+                  sigma.sq = 1, phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(F23_spA_dat$y)),
+                  N = apply(F23_spA_dat$y, 1, sum)) 
+
 # ----------------------
-# Detection Function
+# Fit Model
 # ----------------------
-
-# Half-normal  
-F23_hn_fm0 <- DS(abund.formula = ~ 1 ,
-            det.formula = ~ (1|SiteID), 
-            data = F23spA_dat,
-            family = 'Poisson',
-            det.func = 'halfnormal',
-            transect = 'line',
-            inits = F23inits,
-            priors = priors,
-            tuning = tuning,
-            accept.rate = 0.43,
-            n.batch = n.batch,
-            batch.length = batch.length,
-            n.burn = n.burn,
-            n.thin = n.thin,
-            n.chains = n.chains,
-            verbose = FALSE)
-
-
-# Negative Exponential  
-F23_ne_fm0 <- DS(abund.formula = ~ 1 ,
-            det.formula = ~ (1|SiteID), 
-            data = F23spA_dat,
-            family = 'Poisson',
-            det.func = 'negexp',
-            transect = 'line',
-            inits = F23inits,
-            priors = priors,
-            tuning = tuning,
-            accept.rate = 0.43,
-            n.batch = n.batch,
-            batch.length = batch.length,
-            n.burn = n.burn,
-            n.thin = n.thin,
-            n.chains = n.chains,
-            verbose = FALSE)
+F23_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+                det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
+                data = F23_spA_dat,
+                family = 'Poisson',
+                det.func = 'halfnormal',
+                transect = 'line',
+                cov.model <- 'exponential',
+                NNGP <- TRUE,
+                n.neighbors <- 15,
+                search.type <- 'cb',
+                inits = F23_inits,
+                priors = priors,
+                tuning = tuning,
+                accept.rate = 0.43,
+                n.batch = n.batch,
+                batch.length = batch.length,
+                n.burn = n.burn,
+                n.thin = n.thin,
+                n.chains = n.chains,
+                verbose = TRUE, 
+                n.omp.threads = n.omp.threads,
+                n.report = n.report
+)
 
 
 # ----------------------
 # Checking convergence 
 # ----------------------
 
-# Half-normal detection function
-plot(F23_hn_fm0, 'beta', density = TRUE) # Abundance parameters
-plot(F23_hn_fm0, 'alpha', density = TRUE) # Detection parameters
-plot(F23_hn_fm0, 'sigma.sq.p', density = TRUE) # Random effect
-F23_hn_fm0$rhat # Rhat values of 1.0 to 1.1 indicate good mixing
-dev.off() # clear plots
+# Rhat values of 1.0 to 1.1 indicate good mixing
+F23_fm1$rhat 
 
+# # Trace Plots
+# plot(F23_fm1, 'beta', density = TRUE)       # Abundance
+# plot(F23_fm1, 'alpha', density = TRUE)      # Detection
+# plot(F23_fm1, 'sigma.sq.p', density = TRUE) # Random effect
 
-# Negative exponential detection function
-plot(F23_ne_fm0, 'beta', density = TRUE)  
-plot(F23_ne_fm0, 'alpha', density = TRUE)
-plot(F23_ne_fm0, 'sigma.sq.p', density = TRUE) 
-F23_ne_fm0$rhat 
-dev.off()  
-
-# ----------------------
-# Rank models 
-# ----------------------
-
-# Calculating WAIC
-F23_hn_fm0_waic <- waicAbund(F23_hn_fm0)
-F23_ne_fm0_waic <- waicAbund(F23_ne_fm0)
-
-# Extract the WAIC values for each model
-F23detfun_waic_values <- c(F23_hn_fm0_waic["WAIC"],
-                           F23_ne_fm0_waic["WAIC"])
-
-# Create a named vector with model names
-F23detfun_names <- c("Half-normal", 
-                      "Negative Exponential")
-
-# Combine model names and WAIC values into a data frame for ranking
-F23detfun_waic_df <- data.frame(Model = F23detfun_names, 
-                              WAIC = F23detfun_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-F23detfun_waic_df <- F23detfun_waic_df[order(F23detfun_waic_df$WAIC), ]
-
-# Print the ranked models
-print(F23detfun_waic_df)
-
-# Negative Exponential was the better model
-
-# ----------------------
-# Detection Covariates
-# ----------------------
-
-# Using largest patch index on abundance since WTD typically hang out around woody areas
-# with brief excursions out in the open 
-
-# Group size
-F23_ne_fm1 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ mnGS + (1|SiteID), 
-                 data = F23spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F23inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# SurveyTime
-F23_ne_fm2 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ as.factor(SurveyTime) + (1|SiteID), 
-                 data = F23spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F23inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Aggregation Index
-F23_ne_fm3 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_AggInx) + (1|SiteID), 
-                 data = F23spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F23inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Largest Patch Index
-F23_ne_fm4 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) + (1|SiteID), 
-                 data = F23spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F23inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# ----------------------
-# Checking convergence 
-# ----------------------
-
-# # Group size
-# plot(F23_ne_fm1, 'beta', density = TRUE)  
-# plot(F23_ne_fm1, 'alpha', density = TRUE)  
-# plot(F23_ne_fm1, 'sigma.sq.p', density = TRUE)  
-# F23_ne_fm1$rhat  
-# dev.off()  
-# 
-# 
-# # SurveyTime
-# plot(F23_ne_fm2, 'beta', density = TRUE)  
-# plot(F23_ne_fm2, 'alpha', density = TRUE)
-# plot(F23_ne_fm2, 'sigma.sq.p', density = TRUE) 
-# F23_ne_fm2$rhat 
+# # Clear plots
 # dev.off() 
-# 
-# # Woody Aggregation Index
-# plot(F23_ne_fm3, 'beta', density = TRUE)  
-# plot(F23_ne_fm3, 'alpha', density = TRUE)
-# plot(F23_ne_fm3, 'sigma.sq.p', density = TRUE) 
-# F23_ne_fm3$rhat 
-# dev.off()
-# 
-# # Woody Largest Patch Index
-# plot(F23_ne_fm4, 'beta', density = TRUE)  
-# plot(F23_ne_fm4, 'alpha', density = TRUE)
-# plot(F23_ne_fm4, 'sigma.sq.p', density = TRUE) 
-# F23_ne_fm4$rhat 
-# dev.off()
 
-# ----------------------
-# Rank models 
-# ----------------------
-
-# Calculating WAIC
-F23_ne_fm0_waic <- waicAbund(F23_ne_fm0)
-F23_ne_fm1_waic <- waicAbund(F23_ne_fm1)
-F23_ne_fm2_waic <- waicAbund(F23_ne_fm2)
-F23_ne_fm3_waic <- waicAbund(F23_ne_fm3)
-F23_ne_fm4_waic <- waicAbund(F23_ne_fm4)
-
-# Extract the WAIC values for each model
-F23_waic_values <- c(F23_ne_fm0_waic["WAIC"],
-                     F23_ne_fm1_waic["WAIC"],
-                     F23_ne_fm2_waic["WAIC"],
-                     F23_ne_fm3_waic["WAIC"],
-                     F23_ne_fm4_waic["WAIC"]
-)
-
-# Create a named vector with model names
-F23_names <- c("fm0", 
-               "fm1",
-               "fm2",
-               "fm3",
-               "fm4"
-)
-
-# Combine model names and WAIC values into a data frame for ranking
-F23_waic_df <- data.frame(Model = F23_names, 
-                                WAIC = F23_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-F23_waic_df <- F23_waic_df[order(F23_waic_df$WAIC), ]
-
-# Print the ranked models
-print(F23_waic_df)
-
-# Best model is fm2 by ~5 WAIC
+# # Mean of spatial random effects
+# w.means <- apply(F23_fm1$w.samples, 2, mean)
+# hist(w.means)
 
 # Check fit
-F23_bm_ppc <- ppcAbund(F23_ne_fm2, fit.stat = "chi-squared", group = 1)
+F23_bm_ppc <- ppcAbund(F23_fm1, fit.stat = "chi-squared", group = 1)
 summary(F23_bm_ppc)
 
-# Fit is not the best
+# ----------------------
+# Abundance Estimates 
+# ----------------------
 
-# Export best model
-saveRDS(F23_ne_fm2, "./Model_Objects/F23_Heli_HDS_BestModel.rds")
+# F23_fm1$N.samples is abundance estimate per transect
+print(F23_fm1$N.samples)
+
+# Summarizing estimates by transect
+F23_all_site_ests <- rowSums(F23_fm1$N.samples)
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+F23_dens_vec <-  (F23_all_site_ests / (sum(transect_effort$Area_ac)))
+
+# Correcting desity estimates to total abundance in the area
+F23_abund_vec <- F23_dens_vec * 2710
+
+# Compute summary statistics
+F23_abund_summary <- data.frame(Model = "Heli HDS", 
+                                Season = "Fall 2023",
+                                Data = "Helicopter",
+                                Season_Model = "F23 Heli HDS",
+                                N = mean(F23_abund_vec, na.rm = TRUE),  
+                                LCI = as.numeric(quantile(F23_abund_vec, probs = 0.025, na.rm = TRUE)), 
+                                UCI = as.numeric(quantile(F23_abund_vec, probs = 0.975, na.rm = TRUE)) 
+)
+
+# Print Abundance Summary
+print(F23_abund_summary)
+
+# Export abundance estimates
+saveRDS(F23_abund_summary, "./Model_Objects/F23_Heli_HDS_AbundEst.rds")
+
 
 # -------------------------------------------------------
 #                     Winter 2024
@@ -709,262 +665,96 @@ saveRDS(F23_ne_fm2, "./Model_Objects/F23_Heli_HDS_BestModel.rds")
 # ----------------------
 # Initial values
 # ----------------------
-W24inits <- list(alpha = 0.1,               
-                 beta = 0.1,                
-                 sigma.sq.p = 0.1,
-                 N = apply(W24spA_dat$y, 1, sum)
-) 
+W24_inits <- list(beta = 0, 
+                  alpha = 0, 
+                  kappa = 1,
+                  sigma.sq.p = 0.1,
+                  sigma.sq = 1, phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(W24_spA_dat$y)),
+                  N = apply(W24_spA_dat$y, 1, sum)) 
 
 # ----------------------
-# Detection Function
+# Fit Model
 # ----------------------
-
-# Half-normal  
-W24_hn_fm0 <- DS(abund.formula = ~ 1 ,
-                 det.formula = ~ (1|SiteID), 
-                 data = W24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'halfnormal',
-                 transect = 'line',
-                 inits = W24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# Negative Exponential  
-W24_ne_fm0 <- DS(abund.formula = ~ 1 ,
-                 det.formula = ~ (1|SiteID), 
-                 data = W24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
+W24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+                det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
+                data = W24_spA_dat,
+                family = 'Poisson',
+                det.func = 'halfnormal',
+                transect = 'line',
+                cov.model <- 'exponential',
+                NNGP <- TRUE,
+                n.neighbors <- 15,
+                search.type <- 'cb',
+                inits = W24_inits,
+                priors = priors,
+                tuning = tuning,
+                accept.rate = 0.43,
+                n.batch = n.batch,
+                batch.length = batch.length,
+                n.burn = n.burn,
+                n.thin = n.thin,
+                n.chains = n.chains,
+                verbose = TRUE, 
+                n.omp.threads = n.omp.threads,
+                n.report = n.report
+)
 
 
 # ----------------------
 # Checking convergence 
 # ----------------------
 
-# # Half-normal detection function
-# plot(W24_hn_fm0, 'beta', density = TRUE) # Abundance parameters
-# plot(W24_hn_fm0, 'alpha', density = TRUE) # Detection parameters
-# plot(W24_hn_fm0, 'sigma.sq.p', density = TRUE) # Random effect
-# W24_hn_fm0$rhat # Rhat values of 1.0 to 1.1 indicate good mixing
-# dev.off() # clear plots
-# 
-# 
-# # Negative exponential detection function
-# plot(W24_ne_fm0, 'beta', density = TRUE)  
-# plot(W24_ne_fm0, 'alpha', density = TRUE)
-# plot(W24_ne_fm0, 'sigma.sq.p', density = TRUE) 
-# W24_ne_fm0$rhat 
-# dev.off()  
+# Rhat values of 1.0 to 1.1 indicate good mixing
+W24_fm1$rhat 
 
-# ----------------------
-# Rank models 
-# ----------------------
+# # Trace Plots
+# plot(W24_fm1, 'beta', density = TRUE)       # Abundance
+# plot(W24_fm1, 'alpha', density = TRUE)      # Detection
+# plot(W24_fm1, 'sigma.sq.p', density = TRUE) # Random effect
 
-# Calculating WAIC
-W24_hn_fm0_waic <- waicAbund(W24_hn_fm0)
-W24_ne_fm0_waic <- waicAbund(W24_ne_fm0)
-
-# Extract the WAIC values for each model
-W24_detfun_waic_values <- c(W24_hn_fm0_waic["WAIC"],
-                            W24_ne_fm0_waic["WAIC"])
-
-# Create a named vector with model names
-W24_detfun_names <- c("Half-normal", 
-                      "Negative Exponential")
-
-# Combine model names and WAIC values into a data frame for ranking
-W24_detfun_waic_df <- data.frame(Model = W24_detfun_names, 
-                                 WAIC = W24_detfun_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-W24_detfun_waic_df <- W24_detfun_waic_df[order(W24_detfun_waic_df$WAIC), ]
-
-# Print the ranked models
-print(W24_detfun_waic_df)
-
-# Negative Exponential was the better model
-
-# ----------------------
-# Detection Covariates
-# ----------------------
-
-# Using largest patch index on abundance since WTD typically hang out around woody areas
-# with brief excursions out in the open 
-
-# Group size
-W24_ne_fm1 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ mnGS + (1|SiteID), 
-                 data = W24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# SurveyTime
-W24_ne_fm2 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ as.factor(SurveyTime) + (1|SiteID), 
-                 data = W24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Aggregation Index
-W24_ne_fm3 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_AggInx) + (1|SiteID), 
-                 data = W24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Largest Patch Index
-W24_ne_fm4 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) + (1|SiteID), 
-                 data = W24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# ----------------------
-# Checking convergence 
-# ----------------------
-
-# # Group size
-# plot(W24_ne_fm1, 'beta', density = TRUE)  
-# plot(W24_ne_fm1, 'alpha', density = TRUE)  
-# plot(W24_ne_fm1, 'sigma.sq.p', density = TRUE)  
-# W24_ne_fm1$rhat  
-# dev.off()  
-# 
-# 
-# # SurveyTime
-# plot(W24_ne_fm2, 'beta', density = TRUE)  
-# plot(W24_ne_fm2, 'alpha', density = TRUE)
-# plot(W24_ne_fm2, 'sigma.sq.p', density = TRUE) 
-# W24_ne_fm2$rhat 
+# # Clear plots
 # dev.off() 
-# 
-# # Woody Aggregation Index
-# plot(W24_ne_fm3, 'beta', density = TRUE)  
-# plot(W24_ne_fm3, 'alpha', density = TRUE)
-# plot(W24_ne_fm3, 'sigma.sq.p', density = TRUE) 
-# W24_ne_fm3$rhat 
-# dev.off()
-# 
-# # Woody Largest Patch Index
-# plot(W24_ne_fm4, 'beta', density = TRUE)  
-# plot(W24_ne_fm4, 'alpha', density = TRUE)
-# plot(W24_ne_fm4, 'sigma.sq.p', density = TRUE) 
-# W24_ne_fm4$rhat 
-# dev.off()
 
-# ----------------------
-# Rank models 
-# ----------------------
-
-# Calculating WAIC
-W24_ne_fm0_waic <- waicAbund(W24_ne_fm0)
-W24_ne_fm1_waic <- waicAbund(W24_ne_fm1)
-W24_ne_fm2_waic <- waicAbund(W24_ne_fm2)
-W24_ne_fm3_waic <- waicAbund(W24_ne_fm3)
-W24_ne_fm4_waic <- waicAbund(W24_ne_fm4)
-
-# Extract the WAIC values for each model
-W24_waic_values <- c(W24_ne_fm0_waic["WAIC"],
-                     W24_ne_fm1_waic["WAIC"],
-                     W24_ne_fm2_waic["WAIC"],
-                     W24_ne_fm3_waic["WAIC"],
-                     W24_ne_fm4_waic["WAIC"]
-)
-
-# Create a named vector with model names
-W24_names <- c("fm0", 
-               "fm1",
-               "fm2",
-               "fm3",
-               "fm4"
-)
-
-# Combine model names and WAIC values into a data frame for ranking
-W24_waic_df <- data.frame(Model = W24_names, 
-                          WAIC = W24_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-W24_waic_df <- W24_waic_df[order(W24_waic_df$WAIC), ]
-
-# Print the ranked models
-print(W24_waic_df)
-
-# Best model is fm2 by ~5 WAIC
+# # Mean of spatial random effects
+# w.means <- apply(W24_fm1$w.samples, 2, mean)
+# hist(w.means)
 
 # Check fit
-W24_bm_ppc <- ppcAbund(W24_ne_fm2, fit.stat = "chi-squared", group = 1)
+W24_bm_ppc <- ppcAbund(W24_fm1, fit.stat = "chi-squared", group = 1)
 summary(W24_bm_ppc)
 
-# Fit is not the best
+# ----------------------
+# Abundance Estimates 
+# ----------------------
 
-# Export best model
-saveRDS(W24_ne_fm2, "./Model_Objects/W24_Heli_HDS_BestModel.rds")
+# W24_fm1$N.samples is abundance estimate per transect
+print(W24_fm1$N.samples)
+
+# Summarizing estimates by transect
+W24_all_site_ests <- rowSums(W24_fm1$N.samples)
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+W24_dens_vec <-  (W24_all_site_ests / (sum(transect_effort$Area_ac)))
+
+# Correcting desity estimates to total abundance in the area
+W24_abund_vec <- W24_dens_vec * 2710
+
+# Compute summary statistics
+W24_abund_summary <- data.frame(Model = "Heli HDS", 
+                                Season = "Winter 2024",
+                                Data = "Helicopter",
+                                Season_Model = "W24 Heli HDS",
+                                N = mean(W24_abund_vec, na.rm = TRUE),  
+                                LCI = as.numeric(quantile(W24_abund_vec, probs = 0.025, na.rm = TRUE)), 
+                                UCI = as.numeric(quantile(W24_abund_vec, probs = 0.975, na.rm = TRUE)) 
+)
+
+# Print Abundance Summary
+print(W24_abund_summary)
+
+# Export abundance estimates
+saveRDS(W24_abund_summary, "./Model_Objects/W24_Heli_HDS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -974,260 +764,96 @@ saveRDS(W24_ne_fm2, "./Model_Objects/W24_Heli_HDS_BestModel.rds")
 # ----------------------
 # Initial values
 # ----------------------
-F24inits <- list(alpha = 0.1,               
-                 beta = 0.1,                
-                 sigma.sq.p = 0.1,
-                 N = apply(F24spA_dat$y, 1, sum)
-) 
+F24_inits <- list(beta = 0, 
+                  alpha = 0, 
+                  kappa = 1,
+                  sigma.sq.p = 0.1,
+                  sigma.sq = 1, phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(F24_spA_dat$y)),
+                  N = apply(F24_spA_dat$y, 1, sum)) 
 
 # ----------------------
-# Detection Function
+# Fit Model
 # ----------------------
-
-# Half-normal  
-F24_hn_fm0 <- DS(abund.formula = ~ 1 ,
-                 det.formula = ~ (1|SiteID), 
-                 data = F24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'halfnormal',
-                 transect = 'line',
-                 inits = F24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# Negative Exponential  
-F24_ne_fm0 <- DS(abund.formula = ~ 1 ,
-                 det.formula = ~ (1|SiteID), 
-                 data = F24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
+F24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+                det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
+                data = F24_spA_dat,
+                family = 'Poisson',
+                det.func = 'halfnormal',
+                transect = 'line',
+                cov.model <- 'exponential',
+                NNGP <- TRUE,
+                n.neighbors <- 15,
+                search.type <- 'cb',
+                inits = F24_inits,
+                priors = priors,
+                tuning = tuning,
+                accept.rate = 0.43,
+                n.batch = n.batch,
+                batch.length = batch.length,
+                n.burn = n.burn,
+                n.thin = n.thin,
+                n.chains = n.chains,
+                verbose = TRUE, 
+                n.omp.threads = n.omp.threads,
+                n.report = n.report
+)
 
 
 # ----------------------
 # Checking convergence 
 # ----------------------
 
-# # Half-normal detection function
-# plot(F24_hn_fm0, 'beta', density = TRUE) # Abundance parameters
-# plot(F24_hn_fm0, 'alpha', density = TRUE) # Detection parameters
-# plot(F24_hn_fm0, 'sigma.sq.p', density = TRUE) # Random effect
-# F24_hn_fm0$rhat # Rhat values of 1.0 to 1.1 indicate good mixing
-# dev.off() # clear plots
-# 
-# 
-# # Negative exponential detection function
-# plot(F24_ne_fm0, 'beta', density = TRUE)  
-# plot(F24_ne_fm0, 'alpha', density = TRUE)
-# plot(F24_ne_fm0, 'sigma.sq.p', density = TRUE) 
-# F24_ne_fm0$rhat 
-# dev.off()  
+# Rhat values of 1.0 to 1.1 indicate good mixing
+F24_fm1$rhat 
 
-# ----------------------
-# Rank models 
-# ----------------------
+# # Trace Plots
+# plot(F24_fm1, 'beta', density = TRUE)       # Abundance
+# plot(F24_fm1, 'alpha', density = TRUE)      # Detection
+# plot(F24_fm1, 'sigma.sq.p', density = TRUE) # Random effect
 
-# Calculating WAIC
-F24_hn_fm0_waic <- waicAbund(F24_hn_fm0)
-F24_ne_fm0_waic <- waicAbund(F24_ne_fm0)
-
-# Extract the WAIC values for each model
-F24_detfun_waic_values <- c(F24_hn_fm0_waic["WAIC"],
-                            F24_ne_fm0_waic["WAIC"])
-
-# Create a named vector with model names
-F24_detfun_names <- c("Half-normal", 
-                      "Negative Exponential")
-
-# Combine model names and WAIC values into a data frame for ranking
-F24_detfun_waic_df <- data.frame(Model = F24_detfun_names, 
-                                 WAIC = F24_detfun_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-F24_detfun_waic_df <- F24_detfun_waic_df[order(F24_detfun_waic_df$WAIC), ]
-
-# Print the ranked models
-print(F24_detfun_waic_df)
-
-# Negative Exponential was the better model
-
-# ----------------------
-# Detection Covariates
-# ----------------------
-
-# Using largest patch index on abundance since WTD typically hang out around woody areas
-# with brief excursions out in the open 
-
-# Group size
-F24_ne_fm1 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ mnGS + (1|SiteID), 
-                 data = F24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# SurveyTime
-F24_ne_fm2 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ as.factor(SurveyTime) + (1|SiteID), 
-                 data = F24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Aggregation Index
-F24_ne_fm3 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_AggInx) + (1|SiteID), 
-                 data = F24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Largest Patch Index
-F24_ne_fm4 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) + (1|SiteID), 
-                 data = F24spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = F24inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# ----------------------
-# Checking convergence 
-# ----------------------
-
-# # Group size
-# plot(F24_ne_fm1, 'beta', density = TRUE)  
-# plot(F24_ne_fm1, 'alpha', density = TRUE)  
-# plot(F24_ne_fm1, 'sigma.sq.p', density = TRUE)  
-# F24_ne_fm1$rhat  
-# dev.off()  
-# 
-# 
-# # SurveyTime
-# plot(F24_ne_fm2, 'beta', density = TRUE)  
-# plot(F24_ne_fm2, 'alpha', density = TRUE)
-# plot(F24_ne_fm2, 'sigma.sq.p', density = TRUE) 
-# F24_ne_fm2$rhat 
+# # Clear plots
 # dev.off() 
-# 
-# # Woody Aggregation Index
-# plot(F24_ne_fm3, 'beta', density = TRUE)  
-# plot(F24_ne_fm3, 'alpha', density = TRUE)
-# plot(F24_ne_fm3, 'sigma.sq.p', density = TRUE) 
-# F24_ne_fm3$rhat 
-# dev.off()
-# 
-# # Woody Largest Patch Index
-# plot(F24_ne_fm4, 'beta', density = TRUE)  
-# plot(F24_ne_fm4, 'alpha', density = TRUE)
-# plot(F24_ne_fm4, 'sigma.sq.p', density = TRUE) 
-# F24_ne_fm4$rhat 
-# dev.off()
 
-# ----------------------
-# Rank models 
-# ----------------------
-
-# Calculating WAIC
-F24_ne_fm0_waic <- waicAbund(F24_ne_fm0)
-F24_ne_fm1_waic <- waicAbund(F24_ne_fm1)
-F24_ne_fm2_waic <- waicAbund(F24_ne_fm2)
-F24_ne_fm3_waic <- waicAbund(F24_ne_fm3)
-F24_ne_fm4_waic <- waicAbund(F24_ne_fm4)
-
-# Extract the WAIC values for each model
-F24_waic_values <- c(F24_ne_fm0_waic["WAIC"],
-                     F24_ne_fm1_waic["WAIC"],
-                     F24_ne_fm2_waic["WAIC"],
-                     F24_ne_fm3_waic["WAIC"],
-                     F24_ne_fm4_waic["WAIC"]
-)
-
-# Create a named vector with model names
-F24_names <- c("fm0", 
-               "fm1",
-               "fm2",
-               "fm3",
-               "fm4"
-)
-
-# Combine model names and WAIC values into a data frame for ranking
-F24_waic_df <- data.frame(Model = F24_names, 
-                          WAIC = F24_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-F24_bm_ppc <- F24_waic_df[order(F24_waic_df$WAIC), ]
-
-# Print the ranked models
-print(F24_bm_ppc)
-
-# Best model is fm2 by ~5 WAIC
+# # Mean of spatial random effects
+# w.means <- apply(F24_fm1$w.samples, 2, mean)
+# hist(w.means)
 
 # Check fit
-F24_bm_ppc <- ppcAbund(F24_ne_fm2, fit.stat = "chi-squared", group = 1)
+F24_bm_ppc <- ppcAbund(F24_fm1, fit.stat = "chi-squared", group = 1)
 summary(F24_bm_ppc)
 
-# Export best model
-saveRDS(F24_ne_fm2, "./Model_Objects/F24_Heli_HDS_BestModel.rds")
+# ----------------------
+# Abundance Estimates 
+# ----------------------
+
+# F24_fm1$N.samples is abundance estimate per transect
+print(F24_fm1$N.samples)
+
+# Summarizing estimates by transect
+F24_all_site_ests <- rowSums(F24_fm1$N.samples)
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+F24_dens_vec <-  (F24_all_site_ests / (sum(transect_effort$Area_ac)))
+
+# Correcting desity estimates to total abundance in the area
+F24_abund_vec <- F24_dens_vec * 2710
+
+# Compute summary statistics
+F24_abund_summary <- data.frame(Model = "Heli HDS", 
+                                Season = "Fall 2024",
+                                Data = "Helicopter",
+                                Season_Model = "F24 Heli HDS",
+                                N = mean(F24_abund_vec, na.rm = TRUE),  
+                                LCI = as.numeric(quantile(F24_abund_vec, probs = 0.025, na.rm = TRUE)), 
+                                UCI = as.numeric(quantile(F24_abund_vec, probs = 0.975, na.rm = TRUE)) 
+)
+
+# Print Abundance Summary
+print(F24_abund_summary)
+
+# Export abundance estimates
+saveRDS(F24_abund_summary, "./Model_Objects/F24_Heli_HDS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -1237,261 +863,98 @@ saveRDS(F24_ne_fm2, "./Model_Objects/F24_Heli_HDS_BestModel.rds")
 # ----------------------
 # Initial values
 # ----------------------
-W25inits <- list(alpha = 0.1,               
-                 beta = 0.1,                
-                 sigma.sq.p = 0.1,
-                 N = apply(W25spA_dat$y, 1, sum)
-) 
+W25_inits <- list(beta = 0, 
+                  alpha = 0, 
+                  kappa = 1,
+                  sigma.sq.p = 0.1,
+                  sigma.sq = 1, phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(W25_spA_dat$y)),
+                  N = apply(W25_spA_dat$y, 1, sum)) 
 
 # ----------------------
-# Detection Function
+# Fit Model
 # ----------------------
-
-# Half-normal  
-W25_hn_fm0 <- DS(abund.formula = ~ 1 ,
-                 det.formula = ~ (1|SiteID), 
-                 data = W25spA_dat,
-                 family = 'Poisson',
-                 det.func = 'halfnormal',
-                 transect = 'line',
-                 inits = W25inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# Negative Exponential  
-W25_ne_fm0 <- DS(abund.formula = ~ 1 ,
-                 det.formula = ~ (1|SiteID), 
-                 data = W25spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W25inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
+W25_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+                det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
+                data = W25_spA_dat,
+                family = 'Poisson',
+                det.func = 'halfnormal',
+                transect = 'line',
+                cov.model <- 'exponential',
+                NNGP <- TRUE,
+                n.neighbors <- 15,
+                search.type <- 'cb',
+                inits = W25_inits,
+                priors = priors,
+                tuning = tuning,
+                accept.rate = 0.43,
+                n.batch = n.batch,
+                batch.length = batch.length,
+                n.burn = n.burn,
+                n.thin = n.thin,
+                n.chains = n.chains,
+                verbose = TRUE, 
+                n.omp.threads = n.omp.threads,
+                n.report = n.report
+)
 
 
 # ----------------------
 # Checking convergence 
 # ----------------------
 
-# # Half-normal detection function
-# plot(W25_hn_fm0, 'beta', density = TRUE) # Abundance parameters
-# plot(W25_hn_fm0, 'alpha', density = TRUE) # Detection parameters
-# plot(W25_hn_fm0, 'sigma.sq.p', density = TRUE) # Random effect
-# W25_hn_fm0$rhat # Rhat values of 1.0 to 1.1 indicate good mixing
-# dev.off() # clear plots
+# Rhat values of 1.0 to 1.1 indicate good mixing
+W25_fm1$rhat 
+
+# # Trace Plots
+# plot(W25_fm1, 'beta', density = TRUE)       # Abundance
+# plot(W25_fm1, 'alpha', density = TRUE)      # Detection
+# plot(W25_fm1, 'sigma.sq.p', density = TRUE) # Random effect
 # 
-# 
-# # Negative exponential detection function
-# plot(W25_ne_fm0, 'beta', density = TRUE)  
-# plot(W25_ne_fm0, 'alpha', density = TRUE)
-# plot(W25_ne_fm0, 'sigma.sq.p', density = TRUE) 
-# W25_ne_fm0$rhat 
-# dev.off()  
-
-# ----------------------
-# Rank models 
-# ----------------------
-
-# Calculating WAIC
-W25_hn_fm0_waic <- waicAbund(W25_hn_fm0)
-W25_ne_fm0_waic <- waicAbund(W25_ne_fm0)
-
-# Extract the WAIC values for each model
-W25_detfun_waic_values <- c(W25_hn_fm0_waic["WAIC"],
-                            W25_ne_fm0_waic["WAIC"])
-
-# Create a named vector with model names
-W25_detfun_names <- c("Half-normal", 
-                      "Negative Exponential")
-
-# Combine model names and WAIC values into a data frame for ranking
-W25_detfun_waic_df <- data.frame(Model = W25_detfun_names, 
-                                 WAIC = W25_detfun_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-W25_detfun_waic_df <- W25_detfun_waic_df[order(W25_detfun_waic_df$WAIC), ]
-
-# Print the ranked models
-print(W25_detfun_waic_df)
-
-# Negative Exponential was the better model
-
-# ----------------------
-# Detection Covariates
-# ----------------------
-
-# Using largest patch index on abundance since WTD typically hang out around woody areas
-# with brief excursions out in the open 
-
-# Group size
-W25_ne_fm1 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ mnGS + (1|SiteID), 
-                 data = W25spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W25inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# SurveyTime
-W25_ne_fm2 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ as.factor(SurveyTime) + (1|SiteID), 
-                 data = W25spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W25inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Aggregation Index
-W25_ne_fm3 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_AggInx) + (1|SiteID), 
-                 data = W25spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W25inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-# Woody Largest Patch Index
-W25_ne_fm4 <- DS(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) ,
-                 det.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx) + (1|SiteID), 
-                 data = W25spA_dat,
-                 family = 'Poisson',
-                 det.func = 'negexp',
-                 transect = 'line',
-                 inits = W25inits,
-                 priors = priors,
-                 tuning = tuning,
-                 accept.rate = 0.43,
-                 n.batch = n.batch,
-                 batch.length = batch.length,
-                 n.burn = n.burn,
-                 n.thin = n.thin,
-                 n.chains = n.chains,
-                 verbose = FALSE)
-
-
-# ----------------------
-# Checking convergence 
-# ----------------------
-
-# # Group size
-# plot(W25_ne_fm1, 'beta', density = TRUE)  
-# plot(W25_ne_fm1, 'alpha', density = TRUE)  
-# plot(W25_ne_fm1, 'sigma.sq.p', density = TRUE)  
-# W25_ne_fm1$rhat  
-# dev.off()  
-# 
-# 
-# # SurveyTime
-# plot(W25_ne_fm2, 'beta', density = TRUE)  
-# plot(W25_ne_fm2, 'alpha', density = TRUE)
-# plot(W25_ne_fm2, 'sigma.sq.p', density = TRUE) 
-# W25_ne_fm2$rhat 
+# # Clear plots
 # dev.off() 
-# 
-# # Woody Aggregation Index
-# plot(W25_ne_fm3, 'beta', density = TRUE)  
-# plot(W25_ne_fm3, 'alpha', density = TRUE)
-# plot(W25_ne_fm3, 'sigma.sq.p', density = TRUE) 
-# W25_ne_fm3$rhat 
-# dev.off()
-# 
-# # Woody Largest Patch Index
-# plot(W25_ne_fm4, 'beta', density = TRUE)  
-# plot(W25_ne_fm4, 'alpha', density = TRUE)
-# plot(W25_ne_fm4, 'sigma.sq.p', density = TRUE) 
-# W25_ne_fm4$rhat 
-# dev.off()
 
-# ----------------------
-# Rank models 
-# ----------------------
-
-# Calculating WAIC
-W25_ne_fm0_waic <- waicAbund(W25_ne_fm0)
-W25_ne_fm1_waic <- waicAbund(W25_ne_fm1)
-W25_ne_fm2_waic <- waicAbund(W25_ne_fm2)
-W25_ne_fm3_waic <- waicAbund(W25_ne_fm3)
-W25_ne_fm4_waic <- waicAbund(W25_ne_fm4)
-
-# Extract the WAIC values for each model
-W25_waic_values <- c(W25_ne_fm0_waic["WAIC"],
-                     W25_ne_fm1_waic["WAIC"],
-                     W25_ne_fm2_waic["WAIC"],
-                     W25_ne_fm3_waic["WAIC"],
-                     W25_ne_fm4_waic["WAIC"]
-)
-
-# Create a named vector with model names
-W25_names <- c("fm0", 
-               "fm1",
-               "fm2",
-               "fm3",
-               "fm4"
-)
-
-# Combine model names and WAIC values into a data frame for ranking
-W25_waic_df <- data.frame(Model = W25_names, 
-                          WAIC = W25_waic_values)
-
-# Rank models based on WAIC (lower WAIC is better)
-W25_waic_df <- W25_waic_df[order(W25_waic_df$WAIC), ]
-
-# Print the ranked models
-print(W25_waic_df)
-
-# Best model is fm2 by ~5 WAIC
+# # Mean of spatial random effects
+# w.means <- apply(W25_fm1$w.samples, 2, mean)
+# hist(w.means)
 
 # Check fit
-W25_bm_ppc <- ppcAbund(W25_ne_fm2, fit.stat = "chi-squared", group = 1)
+W25_bm_ppc <- ppcAbund(W25_fm1, fit.stat = "chi-squared", group = 1)
 summary(W25_bm_ppc)
 
-# Export best model
-saveRDS(W25_ne_fm2, "./Model_Objects/W25_Heli_HDS_BestModel.rds")
 
-  
+# ----------------------
+# Abundance Estimates 
+# ----------------------
+
+# W25_fm1$N.samples is abundance estimate per transect
+print(W25_fm1$N.samples)
+
+# Summarizing estimates by transect
+W25_all_site_ests <- rowSums(W25_fm1$N.samples)
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+W25_dens_vec <-  (W25_all_site_ests / (sum(transect_effort$Area_ac)))
+
+# Correcting desity estimates to total abundance in the area
+W25_abund_vec <- W25_dens_vec * 2710
+
+# Compute summary statistics
+W25_abund_summary <- data.frame(Model = "Heli HDS", 
+                                Season = "Winter 2025",
+                                Season_Model = "W25 Heli HDS",
+                                Data = "Helicopter",
+                                N = mean(W25_abund_vec, na.rm = TRUE),  
+                                LCI = as.numeric(quantile(W25_abund_vec, probs = 0.025, na.rm = TRUE)), 
+                                UCI = as.numeric(quantile(W25_abund_vec, probs = 0.975, na.rm = TRUE)) 
+)
+
+# Print Abundance Summary
+print(W25_abund_summary)
+
+# Export abundance estimates
+saveRDS(W25_abund_summary, "./Model_Objects/W25_Heli_HDS_AbundEst.rds")
+
+
 
 # ----------------------------- End of Script -----------------------------
