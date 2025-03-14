@@ -20,10 +20,12 @@
 # Install packages (if needed)
 # install.packages("tidyverse")
 # install.packages("spAbundance")
+# install.packages("sf")
 
 # Load library
 library(tidyverse)
 library(spAbundance)
+library(sf)
 
 # Set seed, scientific notation options, increase max print, and working directory
 set.seed(123)
@@ -37,13 +39,17 @@ setwd(".")
 #
 # ------------------------------------------------------------------------------
 
-# Camera Trapping Data
-F23_wtd_cams <- read.csv("./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2023.csv", row.names = 1) 
-W24_wtd_cams <- read.csv("./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Winter2024.csv", row.names = 1) 
-F24_wtd_cams <- read.csv("./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2024.csv", row.names = 1) 
+# Camera trapping data
+F23_wtd_cams <- readRDS("./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2023.rds")
+W24_wtd_cams <- readRDS("./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Winter2024.rds")
+F24_wtd_cams <- readRDS("./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2024.rds")
 
-# Camera Site Covariates
+# Camera site covariates
 site_covs <- read.csv("./Data/Survey_Data/Camera_Data/Camera_siteCovs.csv", row.names = 1)
+
+# Read in site locations
+site_dat <- read.csv("./Data/Survey_Data/Camera_Data/Cam_sites.csv")
+
 
 # ------------------------------------------------------------------------------
 #
@@ -139,23 +145,75 @@ head(F24_doy_mat)
 site_cov_mat <- site_covs[,-c(1:3)]
 
 # -------------------------------------------------------
+# Getting Camera Coordinates
+# ------------------------------------------------------- 
+
+coords <- site_dat[,c("Lat", "Long")]
+
+# Create an sf object with Lat/Long (WGS84)
+coords <- st_as_sf(site_dat, coords = c("Long", "Lat"), crs = 4326)
+
+# Transform to UTM Zone 14N (EPSG:32614)
+coords <- st_transform(coords, crs = 32614)
+
+# Extract UTM coordinates from geometry
+coords <- coords %>%
+  mutate(UTM_East = st_coordinates(.)[,1], 
+         UTM_North = st_coordinates(.)[,2]) %>%
+  select(UTM_East, UTM_North) 
+
+# Convert to a dataframe
+coords <- as.data.frame(coords)
+
+# Remove geometry
+coords <- coords[,-3]
+
+# Print coordinates
+print(coords)
+
+# ----------------------
+# Offset
+# ----------------------
+
+# Viewshed angle
+theta = 38 # degrees, field of view (FOV)
+r = 10     # max view distance 
+
+# Offset in meters squared
+offset_m2 = ((theta/360) * (pi*r^2)) 
+
+# Offset in acres
+# 1 square meter = 0.000247105 acres
+offset_acre = offset_m2 * 0.000247105
+
+# Offset in hectarews
+# 1 square meter = 0.0001 hectares
+offset_ha = offset_m2 * 0.0001
+
+# -------------------------------------------------------
 # Format for spAbundance N-mixture models
 # ------------------------------------------------------- 
 
 # spAbundance uses long format
 F23_spA_dat <- list(y = F23_det_mat,
                     abund.covs = site_cov_mat,
-                    det.covs = list(DOY = F23_doy_mat)
+                    det.covs = list(DOY = F23_doy_mat),
+                    coords = coords,
+                    offset = offset_ha
 )
 
 W24_spA_dat <- list(y = W24_det_mat,
                    abund.covs = site_cov_mat,
-                   det.covs = list(DOY = W24_doy_mat)
+                   det.covs = list(DOY = W24_doy_mat),
+                   coords = coords,
+                   offset = offset_ha
 )
 
 F24_spA_dat <- list(y = F24_det_mat,
                     abund.covs = site_cov_mat,
-                    det.covs = list(DOY = F24_doy_mat)
+                    det.covs = list(DOY = F24_doy_mat),
+                    coords = coords,
+                    offset = offset_ha
 )
 
 
@@ -174,165 +232,145 @@ str(F24_spA_dat)
 # MCMC Specifications
 # ----------------------
 batch.length <- 25
-n.batch <- 10000
+n.batch <- 20000
 batch.length * n.batch # Total number of MCMC samples per chain
 n.burn <- 60000
 n.thin <- 10
 n.chains <- 3
+n.omp.threads <- 9
 
+# ----------------------
+# Site Distance
+# ----------------------
+
+# Pair-wise distances between all sites
+dist_mat <- dist(coords)
 
 # ----------------------
 # Set Priors
 # ----------------------
-priors <- list(alpha.normal = list(mean = 0, var = 10),  
-               beta.normal = list(mean = 0, var = 10),
-               sigma.sq.p.ig = list(mean = 0, var = 2.72)
-)
+priors <- list(alpha.normal = list(mean = 0, var = 2.72),
+               beta.normal = list(mean = 0, var = 100), 
+               kappa.unif = c(0, 100), 
+               sigma.sq.mu.ig = list(0.1, 0.1),
+               sigma.sq.p.ig = list(0.1, 0.1),
+               sigma.sq.ig = c(2, 1),
+               phi.unif = c(3 / max(dist_mat), 3 / min(dist_mat)))
 
 # ----------------------
 # Tuning
 # ----------------------
-tuning <- list(
-  alpha = 0.25,  
-  beta = 0.25,
-  alpha.star = 0.25,
-  kappa = 0.25
-) 
-
+tuning <- list(beta = 0.5,
+               alpha = 0.5,
+               kappa = 0.5,
+               beta.star = 0.5,
+               alpha.star = 0.5,
+               w = 0.5,
+               phi = 0.5)
 
 # -------------------------------------------------------
 #                     Fall 2023
 # -------------------------------------------------------
 
-# # ----------------------
-# # Initial values
-# # ----------------------
-# F23_inits <- list(alpha = 0.1,               
-#                  beta = 0.1,                
-#                  sigma.sq.p = 0.1,
-#                  N = apply(F23_spA_dat$y, 1, sum)
-# ) 
-# 
-# # ----------------------
-# # Detection Covariates
-# # ----------------------
-# 
-# # Fit 0: Null model 
-# F23_fm0 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ 1, 
-#                 data = F23_spA_dat,
-#                 family = 'Poisson',
-#                 inits = F23_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
-# 
-# # Fit 1: DOY Random Effect 
-# F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ (1|DOY), 
-#                 data = F23_spA_dat,
-#                 family = 'Poisson',
-#                 inits = F23_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
-# 
-# # Fit 2: DOY Random Effect - Negative Binomial 
-# F23_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ (1|DOY), 
-#                 data = F23_spA_dat,
-#                 family = 'NB',
-#                 inits = F23_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
+# ----------------------
+# Initial values
+# ----------------------
+F23_inits <- list(alpha = 0,
+                  beta = 0,
+                  kappa = 0.5,
+                  sigma.sq.p = 0.5,
+                  sigma.sq.mu = 0.5,
+                  N = apply(F23_spA_dat$y, 1, max, na.rm = TRUE), 
+                  sigma.sq = 1, 
+                  phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(F23_spA_dat$y)))
+
+
+# ----------------------
+# Fit Model
+# ----------------------
+F23_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+                det.formula = ~ (1|DOY),
+                data = F23_spA_dat,
+                family = 'Poisson',
+                cov.model = 'exponential',
+                NNGP = TRUE, 
+                n.neighbors = 15,
+                search.type = 'cb',
+                inits = F23_inits,
+                priors = priors,
+                tuning = tuning,
+                accept.rate = 0.43,
+                n.batch = n.batch,
+                batch.length = batch.length,
+                n.burn = n.burn,
+                n.thin = n.thin,
+                n.chains = n.chains,
+                verbose = TRUE,
+                n.omp.threads = n.omp.threads,
+                n.report = 5000
+)
+
 
 # ----------------------
 # Checking Convergence
 # ----------------------
 
+# Rhat values of 1.0 to 1.1 indicate good mixing
+F23_fm1$rhat 
 
-# # Fit 0: Null Model
-# plot(F23_fm0, 'beta', density = FALSE)  # Abundance parameters
-# plot(F23_fm0, 'alpha', density = FALSE) # Detection parameters
-# F23_fm0$rhat                            # Rhat values of 1.0 to 1.1 indicate good mixing
-# dev.off()                               # Clear plots
-# 
-# # Fit 1: DOY Random Effect
-# plot(F23_fm1, 'beta', density = FALSE)  
-# plot(F23_fm1, 'alpha', density = FALSE) 
-# plot(F23_fm1, 'sigma.sq.p', density = TRUE)  # Random Effect
-# F23_fm1$rhat                            
-# dev.off()                             
-# 
-# # Fit 2: DOY Random Effect - Negative Binomial
-# plot(F23_fm2, 'beta', density = FALSE)  
-# plot(F23_fm2, 'alpha', density = FALSE) 
-# plot(F23_fm2, 'sigma.sq.p', density = TRUE)
-# plot(F23_fm2, 'kappa', density = TRUE)      # Overdisperison parameter 
-# F23_fm2$rhat                            
-# dev.off()  
+# Trace Plots
+# plot(F23_fm1, 'beta', density = FALSE)  # Abundance parameters
+# plot(F23_fm1, 'alpha', density = FALSE) # Detection parameters
+
+# Check fit
+F23_bm_ppc <- ppcAbund(F23_fm1, fit.stat = "chi-squared", group = 1)
+summary(F23_bm_ppc)
 
 # ----------------------
-# Rank models 
+# Abundance Estimates 
 # ----------------------
 
-# # Calculating WAIC
-# F23_fm0_waic <- waicAbund(F23_fm0)
-# F23_fm1_waic <- waicAbund(F23_fm1)
-# F23_fm2_waic <- waicAbund(F23_fm2)
-# 
-# # Extract the WAIC values for each model
-# F23_waic_values <- c(F23_fm0_waic["WAIC"],
-#                      F23_fm1_waic["WAIC"],
-#                      F23_fm2_waic["WAIC"]
-# )
-# 
-# # Create a named vector with model names
-# F23_names <- c("fm0", 
-#                "fm1",
-#                "fm2"
-# )
-# 
-# # Combine model names and WAIC values into a data frame for ranking
-# F23_waic_df <- data.frame(Model = F23_names, 
-#                           WAIC = F23_waic_values)
-# 
-# # Rank models based on WAIC (lower WAIC is better)
-# F23_waic_df <- F23_waic_df[order(F23_waic_df$WAIC), ]
-# 
-# # Print the ranked models
-# print(F23_waic_df)
-# 
-# # Best model is ...
-# 
-# # Check fit
-# F23_bm_ppc <- ppcAbund(F23_fm2, fit.stat = "chi-squared", group = 1)
-# summary(F23_bm_ppc)
-# 
-# # Fit Nb is pretty good
-# 
-# # Export best model
-# saveRDS(F23_fm2, "./Model_Objects/F23_Cam_Nmix_BestModel.rds")
+# F23_fm1$N.samples is abundance estimate per site
+print(F23_fm1$N.samples)
+mean(F23_fm1$N.samples)
 
+# Summarizing estimates by site
+F23_all_site_ests <- rowSums(F23_fm1$N.samples)
+
+# Total number of survey days
+survey_days <-  max(F23_wtd_cams$survey_end) - min(F23_wtd_cams$survey_start)
+tot_survey_days <- survey_days * 27
+
+# Area surveyed = area surveyed by camera * number of cameras 
+area_surveyed = offset_acre * 27
+
+# Total surveyed area = total area by camera * total days surveyed
+tot_surveyed_area = area_surveyed * tot_survey_days
+
+# mean(F23_fm1$N.samples) / tot_surveyed_area * 2710
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+F23_dens_vec <- F23_all_site_ests / tot_surveyed_area
+
+# Correcting desity estimates to total abundance in the area
+F23_abund_vec <- F23_dens_vec * 2710
+
+# Compute summary statistics
+F23_abund_summary <- data.frame(Model = "Cam Nmix",
+                                Season = "Fall 2023",
+                                Data = "Camera",
+                                Season_Model = "F23 Cam Nmix",
+                                N = mean(F23_abund_vec, na.rm = TRUE),
+                                LCI = as.numeric(quantile(F23_abund_vec, probs = 0.025, na.rm = TRUE)),
+                                UCI = as.numeric(quantile(F23_abund_vec, probs = 0.975, na.rm = TRUE))
+)
+
+# Print Abundance Summary
+print(F23_abund_summary)
+
+# Export abundance estimates
+saveRDS(F23_abund_summary, "./Model_Objects/F23_Cam_Nmix_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -342,133 +380,92 @@ tuning <- list(
 # ----------------------
 # Initial values
 # ----------------------
-W24_inits <- list(alpha = 0.1,               
-                  beta = 0.1,                
-                  sigma.sq.p = 0.1,
-                  N = apply(W24_spA_dat$y, 1, sum)
-) 
+W24_inits <- list(alpha = 0,
+                  beta = 0,
+                  kappa = 0.5,
+                  sigma.sq.p = 0.5,
+                  sigma.sq.mu = 0.5,
+                  N = apply(W24_spA_dat$y, 1, max, na.rm = TRUE), 
+                  sigma.sq = 1, 
+                  phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(W24_spA_dat$y)))
+
 
 # ----------------------
-# Detection Covariates
+# Fit Model
 # ----------------------
-
-# # Fit 0: Null model 
-# W24_fm0 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ 1, 
-#                 data = W24_spA_dat,
-#                 family = 'Poisson',
-#                 inits = W24_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
-# 
-# # Fit 1: DOY Random Effect 
-# W24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ (1|DOY), 
-#                 data = W24_spA_dat,
-#                 family = 'Poisson',
-#                 inits = W24_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
-
-# Fit 2: DOY Random Effect - Negative Binomial 
-W24_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-                det.formula = ~ (1|DOY), 
-                data = W24_spA_dat,
-                family = 'NB',
-                inits = W24_inits, 
-                priors = priors,
-                tuning = tuning,
-                accept.rate = 0.43,
-                n.batch = n.batch,
-                batch.length = batch.length,
-                n.burn = n.burn,
-                n.thin = n.thin, 
-                n.chains = n.chains,
-                verbose = FALSE)
+W24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
+                  det.formula = ~ (1|DOY),
+                  data = W24_spA_dat,
+                  family = 'Poisson',
+                  cov.model = 'exponential',
+                  NNGP = TRUE, 
+                  n.neighbors = 15,
+                  search.type = 'cb',
+                  inits = W24_inits,
+                  priors = priors,
+                  tuning = tuning,
+                  accept.rate = 0.43,
+                  n.batch = n.batch,
+                  batch.length = batch.length,
+                  n.burn = n.burn,
+                  n.thin = n.thin,
+                  n.chains = n.chains,
+                  verbose = TRUE,
+                  n.omp.threads = n.omp.threads,
+                  n.report = 5000
+)
 
 # ----------------------
 # Checking Convergence
 # ----------------------
 
 
-# # Fit 0: Null Model
-# plot(W24_fm0, 'beta', density = FALSE)  # Abundance parameters
-# plot(W24_fm0, 'alpha', density = FALSE) # Detection parameters
-# W24_fm0$rhat                            # Rhat values of 1.0 to 1.1 indicate good mixing
-# dev.off()                               # Clear plots
-# 
-# # Fit 1: DOY Random Effect
-# plot(W24_fm1, 'beta', density = FALSE)  
-# plot(W24_fm1, 'alpha', density = FALSE) 
-# plot(W24_fm1, 'sigma.sq.p', density = TRUE)  # Random Effect
-# W24_fm1$rhat                            
-# dev.off()                             
-# 
-# # Fit 2: DOY Random Effect - Negative Binomial
-# plot(W24_fm2, 'beta', density = FALSE)  
-# plot(W24_fm2, 'alpha', density = FALSE) 
-# plot(W24_fm2, 'sigma.sq.p', density = TRUE)
-# plot(W24_fm2, 'kappa', density = TRUE)      # Overdisperison parameter
-# W24_fm2$rhat                            
-# dev.off()  
+# Rhat values of 1.0 to 1.1 indicate good mixing
+W24_fm1$rhat 
 
-# ----------------------
-# Rank models 
-# ----------------------
-
-# # Calculating WAIC
-# W24_fm0_waic <- waicAbund(W24_fm0)
-# W24_fm1_waic <- waicAbund(W24_fm1)
-# W24_fm2_waic <- waicAbund(W24_fm2)
-# 
-# # Extract the WAIC values for each model
-# W24_waic_values <- c(W24_fm0_waic["WAIC"],
-#                      W24_fm1_waic["WAIC"],
-#                      W24_fm2_waic["WAIC"]
-# )
-# 
-# # Create a named vector with model names
-# W24_names <- c("fm0", 
-#                "fm1",
-#                "fm2"
-# )
-# 
-# # Combine model names and WAIC values into a data frame for ranking
-# W24_waic_df <- data.frame(Model = W24_names, 
-#                           WAIC = W24_waic_values)
-# 
-# # Rank models based on WAIC (lower WAIC is better)
-# W24_waic_df <- W24_waic_df[order(W24_waic_df$WAIC), ]
-# 
-# # Print the ranked models
-# print(W24_waic_df)
-# 
-# # Best model is ...
+# Trace Plots
+# plot(W24_fm1, 'beta', density = FALSE)  # Abundance parameters
+# plot(W24_fm1, 'alpha', density = FALSE) # Detection parameters
 
 # Check fit
-W24_bm_ppc <- ppcAbund(W24_fm2, fit.stat = "chi-squared", group = 1)
+W24_bm_ppc <- ppcAbund(W24_fm1, fit.stat = "chi-squared", group = 1)
 summary(W24_bm_ppc)
 
-# Fit is not the best
+# ----------------------
+# Abundance Estimates 
+# ----------------------
 
-# Export best model
-saveRDS(W24_fm2, "./Model_Objects/W24_Cam_Nmix_BestModel.rds")
-
-
+# # W24_fm1$N.samples is abundance estimate per site
+# print(W24_fm1$N.samples)
+# 
+# # Summarizing estimates by site
+# W24_all_site_ests <- rowSums(W24_fm1$N.samples)
+# 
+# # Total area surveyed = area surveyed by camera * number of cameras
+# area_surveyed = offset_acre * 27
+# 
+# # Create a density matrix which is the latent abundance across sites divided by the area surveyed
+# W24_dens_vec <-  (W24_all_site_ests / area_surveyed)
+# 
+# # Correcting desity estimates to total abundance in the area
+# W24_abund_vec <- W24_dens_vec * 2710
+# 
+# # Compute summary statistics
+# W24_abund_summary <- data.frame(Model = "Cam Nmix", 
+#                                 Season = "Winter 2024",
+#                                 Data = "Camera",
+#                                 Season_Model = "W24 Cam Nmix",
+#                                 N = mean(W24_abund_vec, na.rm = TRUE),  
+#                                 LCI = as.numeric(quantile(W24_abund_vec, probs = 0.025, na.rm = TRUE)), 
+#                                 UCI = as.numeric(quantile(W24_abund_vec, probs = 0.975, na.rm = TRUE)) 
+# )
+# 
+# # Print Abundance Summary
+# print(W24_abund_summary)
+# 
+# # Export abundance estimates
+# saveRDS(W24_abund_summary, "./Model_Objects/W24_Cam_Nmix_AbundEst.rds")
 
 # -------------------------------------------------------
 #                     Fall 2024
@@ -477,265 +474,89 @@ saveRDS(W24_fm2, "./Model_Objects/W24_Cam_Nmix_BestModel.rds")
 # ----------------------
 # Initial values
 # ----------------------
-F24_inits <- list(alpha = 0.1,               
-                  beta = 0.1,                
-                  sigma.sq.p = 0.1,
-                  N = apply(F24_spA_dat$y, 1, sum)
-) 
+F24_inits <- list(alpha = 0,
+                  beta = 0,
+                  kappa = 0.5,
+                  sigma.sq.p = 0.5,
+                  sigma.sq.mu = 0.5,
+                  N = apply(F24_spA_dat$y, 1, max, na.rm = TRUE), 
+                  sigma.sq = 1, 
+                  phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(F24_spA_dat$y)))
+
 
 # ----------------------
-# Detection Covariates
+# Fit Model
 # ----------------------
-
-# # Fit 0: Null model 
-# F24_fm0 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ 1, 
-#                 data = F24_spA_dat,
-#                 family = 'Poisson',
-#                 inits = F24_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
-# 
-# # Fit 1: DOY Random Effect 
-# F24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ (1|DOY), 
-#                 data = F24_spA_dat,
-#                 family = 'Poisson',
-#                 inits = F24_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
-
-# Fit 2: DOY Random Effect - Negative Binomial 
-F24_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-                det.formula = ~ (1|DOY), 
-                data = F24_spA_dat,
-                family = 'NB',
-                inits = F24_inits, 
-                priors = priors,
-                tuning = tuning,
-                accept.rate = 0.43,
-                n.batch = n.batch,
-                batch.length = batch.length,
-                n.burn = n.burn,
-                n.thin = n.thin, 
-                n.chains = n.chains,
-                verbose = FALSE)
+F24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
+                  det.formula = ~ (1|DOY),
+                  data = F24_spA_dat,
+                  family = 'Poisson',
+                  cov.model = 'exponential',
+                  NNGP = TRUE, 
+                  n.neighbors = 15,
+                  search.type = 'cb',
+                  inits = F24_inits,
+                  priors = priors,
+                  tuning = tuning,
+                  accept.rate = 0.43,
+                  n.batch = n.batch,
+                  batch.length = batch.length,
+                  n.burn = n.burn,
+                  n.thin = n.thin,
+                  n.chains = n.chains,
+                  verbose = TRUE,
+                  n.omp.threads = n.omp.threads,
+                  n.report = 5000
+)
 
 # ----------------------
 # Checking Convergence
 # ----------------------
 
 
-# # Fit 0: Null Model
-# plot(F24_fm0, 'beta', density = FALSE)  # Abundance parameters
-# plot(F24_fm0, 'alpha', density = FALSE) # Detection parameters
-# F24_fm0$rhat                            # Rhat values of 1.0 to 1.1 indicate good mixing
-# dev.off()                               # Clear plots
-# 
-# # Fit 1: DOY Random Effect
-# plot(F24_fm1, 'beta', density = FALSE)  
-# plot(F24_fm1, 'alpha', density = FALSE) 
-# plot(F24_fm1, 'sigma.sq.p', density = TRUE)  # Random Effect
-# F24_fm1$rhat                            
-# dev.off()                             
-# 
-# # Fit 2: DOY Random Effect - Negative Binomial
-# plot(F24_fm2, 'beta', density = FALSE)  
-# plot(F24_fm2, 'alpha', density = FALSE) 
-# plot(F24_fm2, 'sigma.sq.p', density = TRUE)
-# plot(F24_fm2, 'kappa', density = TRUE)      # Overdisperison parameter
-# F24_fm2$rhat                            
-# dev.off()  
+# Rhat values of 1.0 to 1.1 indicate good mixing
+F24_fm1$rhat 
 
-# ----------------------
-# Rank models 
-# ----------------------
-
-# # Calculating WAIC
-# F24_fm0_waic <- waicAbund(F24_fm0)
-# F24_fm1_waic <- waicAbund(F24_fm1)
-# F24_fm2_waic <- waicAbund(F24_fm2)
-# 
-# # Extract the WAIC values for each model
-# F24_waic_values <- c(F24_fm0_waic["WAIC"],
-#                      F24_fm1_waic["WAIC"],
-#                      F24_fm2_waic["WAIC"]
-# )
-# 
-# # Create a named vector with model names
-# F24_names <- c("fm0", 
-#                "fm1",
-#                "fm2"
-# )
-# 
-# # Combine model names and WAIC values into a data frame for ranking
-# F24_waic_df <- data.frame(Model = F24_names, 
-#                           WAIC = F24_waic_values)
-# 
-# # Rank models based on WAIC (lower WAIC is better)
-# F24_waic_df <- F24_waic_df[order(F24_waic_df$WAIC), ]
-# 
-# # Print the ranked models
-# print(F24_waic_df)
-# 
-# # Best model is ...
+# Trace Plots
+# plot(F24_fm1, 'beta', density = FALSE)  # Abundance parameters
+# plot(F24_fm1, 'alpha', density = FALSE) # Detection parameters
 
 # Check fit
-F24_bm_ppc <- ppcAbund(F24_fm2, fit.stat = "chi-squared", group = 1)
+F24_bm_ppc <- ppcAbund(F24_fm1, fit.stat = "chi-squared", group = 1)
 summary(F24_bm_ppc)
 
-# Fit is not the best
-
-# Export best model
-saveRDS(F24_fm2, "./Model_Objects/F24_Cam_Nmix_BestModel.rds")
-
-
-# -------------------------------------------------------
-#                     Winter 2025
-# -------------------------------------------------------
-
 # ----------------------
-# Initial values
-# ----------------------
-W25_inits <- list(alpha = 0.1,               
-                  beta = 0.1,                
-                  sigma.sq.p = 0.1,
-                  N = apply(W25_spA_dat$y, 1, sum)
-) 
-
-# ----------------------
-# Detection Covariates
+# Abundance Estimates 
 # ----------------------
 
-# # Fit 0: Null model 
-# W25_fm0 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ 1, 
-#                 data = W25_spA_dat,
-#                 family = 'Poisson',
-#                 inits = W25_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
+# # F24_fm1$N.samples is abundance estimate per site
+# print(F24_fm1$N.samples)
 # 
-# # Fit 1: DOY Random Effect 
-# W25_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx), 
-#                 det.formula = ~ (1|DOY), 
-#                 data = W25_spA_dat,
-#                 family = 'Poisson',
-#                 inits = W25_inits, 
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin, 
-#                 n.chains = n.chains,
-#                 verbose = FALSE)
+# # Summarizing estimates by site
+# F24_all_site_ests <- rowSums(F24_fm1$N.samples)
 # 
-# Fit 2: DOY Random Effect - Negative Binomial
-W25_fm2 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
-                det.formula = ~ (1|DOY),
-                data = W25_spA_dat,
-                family = 'NB',
-                inits = W25_inits,
-                priors = priors,
-                tuning = tuning,
-                accept.rate = 0.43,
-                n.batch = n.batch,
-                batch.length = batch.length,
-                n.burn = n.burn,
-                n.thin = n.thin,
-                n.chains = n.chains,
-                verbose = FALSE)
-
-# ----------------------
-# Checking Convergence
-# ----------------------
-
-
-# # Fit 0: Null Model
-# plot(W25_fm0, 'beta', density = FALSE)  # Abundance parameters
-# plot(W25_fm0, 'alpha', density = FALSE) # Detection parameters
-# W25_fm0$rhat                            # Rhat values of 1.0 to 1.1 indicate good mixing
-# dev.off()                               # Clear plots
+# # Total area surveyed = area surveyed by camera * number of cameras
+# area_surveyed = offset_acre * 27
 # 
-# # Fit 1: DOY Random Effect
-# plot(W25_fm1, 'beta', density = FALSE)  
-# plot(W25_fm1, 'alpha', density = FALSE) 
-# plot(W25_fm1, 'sigma.sq.p', density = TRUE)  # Random Effect
-# W25_fm1$rhat                            
-# dev.off()                             
+# # Create a density matrix which is the latent abundance across sites divided by the area surveyed
+# F24_dens_vec <-  (F24_all_site_ests / area_surveyed)
 # 
-# # Fit 2: DOY Random Effect - Negative Binomial
-# plot(W25_fm2, 'beta', density = FALSE)  
-# plot(W25_fm2, 'alpha', density = FALSE) 
-# plot(W25_fm2, 'sigma.sq.p', density = TRUE)
-# plot(W25_fm2, 'kappa', density = TRUE)      # Overdisperison parameter
-# W25_fm2$rhat                            
-# dev.off()  
-
-# ----------------------
-# Rank models 
-# ----------------------
-
-# # Calculating WAIC
-# W25_fm0_waic <- waicAbund(W25_fm0)
-# W25_fm1_waic <- waicAbund(W25_fm1)
-# W25_fm2_waic <- waicAbund(W25_fm2)
+# # Correcting desity estimates to total abundance in the area
+# F24_abund_vec <- F24_dens_vec * 2710
 # 
-# # Extract the WAIC values for each model
-# W25_waic_values <- c(W25_fm0_waic["WAIC"],
-#                      W25_fm1_waic["WAIC"],
-#                      W25_fm2_waic["WAIC"]
+# # Compute summary statistics
+# F24_abund_summary <- data.frame(Model = "Cam Nmix", 
+#                                 Season = "Fall 2024",
+#                                 Data = "Camera",
+#                                 Season_Model = "F24 Cam Nmix",
+#                                 N = mean(F24_abund_vec, na.rm = TRUE),  
+#                                 LCI = as.numeric(quantile(F24_abund_vec, probs = 0.025, na.rm = TRUE)), 
+#                                 UCI = as.numeric(quantile(F24_abund_vec, probs = 0.975, na.rm = TRUE)) 
 # )
 # 
-# # Create a named vector with model names
-# W25_names <- c("fm0", 
-#                "fm1",
-#                "fm2"
-# )
+# # Print Abundance Summary
+# print(F24_abund_summary)
 # 
-# # Combine model names and WAIC values into a data frame for ranking
-# W25_waic_df <- data.frame(Model = W25_names, 
-#                           WAIC = W25_waic_values)
-# 
-# # Rank models based on WAIC (lower WAIC is better)
-# W25_waic_df <- W25_waic_df[order(W25_waic_df$WAIC), ]
-# 
-# # Print the ranked models
-# print(W25_waic_df)
-# 
-# # Best model is ...
-
-# # Check fit
-# W25_bm_ppc <- ppcAbund(W25_fm2, fit.stat = "chi-squared", group = 1)
-# summary(W25_bm_ppc)
-# 
-# # Fit is not the best
-# 
-# # Export best model
-# saveRDS(W25_fm2, "./Model_Objects/W25_Cam_Nmix_BestModel.rds")
-
-
-# ----------------------------- End of Script -----------------------------
+# # Export abundance estimates
+# saveRDS(F24_abund_summary, "./Model_Objects/F24_Cam_Nmix_AbundEst.rds")
