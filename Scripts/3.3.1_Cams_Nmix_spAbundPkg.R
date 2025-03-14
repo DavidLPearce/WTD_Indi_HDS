@@ -57,6 +57,22 @@ site_dat <- read.csv("./Data/Survey_Data/Camera_Data/Cam_sites.csv")
 #
 # ------------------------------------------------------------------------------
 
+
+
+# -------------------------------------------------------
+# Subsetting Data to Peak Activity periods
+# ------------------------------------------------------- 
+
+# Subsetting times from 5-9am and 5-9pm
+F23_wtd_cams <- F23_wtd_cams %>%
+  filter((time >= "05:00:00" & time <= "90:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00"))
+
+W24_wtd_cams <- W24_wtd_cams %>%
+  filter((time >= "05:00:00" & time <= "90:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00"))
+
+F24_wtd_cams <- F24_wtd_cams %>%
+  filter((time >= "05:00:00" & time <= "90:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00"))
+
 # -------------------------------------------------------
 # Creating Detection Matrices
 # ------------------------------------------------------- 
@@ -82,23 +98,26 @@ F23_det_mat <- F23_wtd_cams %>%
   full_join(F23_grid, by = c("site_number", "day_of_year")) %>%  # Ensure all sites are included
   mutate(Detections = replace_na(Detections, 0)) %>%  # Fill missing detections with 0
   pivot_wider(names_from = day_of_year, values_from = Detections, values_fill = 0) %>%
+  arrange(as.numeric(site_number)) %>%  # Ensure sites are in ascending order
   column_to_rownames(var = "site_number")  # Set row names as site_number
 
 W24_det_mat <- W24_wtd_cams %>%
   group_by(site_number, day_of_year) %>%
   summarise(Detections = sum(group_size, na.rm = TRUE), .groups = 'drop') %>%
-  full_join(W24_grid, by = c("site_number", "day_of_year")) %>%  
-  mutate(Detections = replace_na(Detections, 0)) %>%  
+  full_join(W24_grid, by = c("site_number", "day_of_year")) %>%  # Ensure all sites are included
+  mutate(Detections = replace_na(Detections, 0)) %>%  # Fill missing detections with 0
   pivot_wider(names_from = day_of_year, values_from = Detections, values_fill = 0) %>%
-  column_to_rownames(var = "site_number") 
+  arrange(as.numeric(site_number)) %>%  # Ensure sites are in ascending order
+  column_to_rownames(var = "site_number")  # Set row names as site_number
 
 F24_det_mat <- F24_wtd_cams %>%
   group_by(site_number, day_of_year) %>%
   summarise(Detections = sum(group_size, na.rm = TRUE), .groups = 'drop') %>%
-  full_join(F24_grid, by = c("site_number", "day_of_year")) %>%  
-  mutate(Detections = replace_na(Detections, 0)) %>%  
+  full_join(F24_grid, by = c("site_number", "day_of_year")) %>%  # Ensure all sites are included
+  mutate(Detections = replace_na(Detections, 0)) %>%  # Fill missing detections with 0
   pivot_wider(names_from = day_of_year, values_from = Detections, values_fill = 0) %>%
-  column_to_rownames(var = "site_number") 
+  arrange(as.numeric(site_number)) %>%  # Ensure sites are in ascending order
+  column_to_rownames(var = "site_number")  # Set row names as site_number
 
 # Take a look
 head(F23_det_mat)
@@ -231,11 +250,11 @@ str(F24_spA_dat)
 # ----------------------
 # MCMC Specifications
 # ----------------------
-batch.length <- 25
+batch.length <- 50
 n.batch <- 20000
 batch.length * n.batch # Total number of MCMC samples per chain
 n.burn <- 60000
-n.thin <- 10
+n.thin <- 15
 n.chains <- 3
 n.omp.threads <- 9
 
@@ -250,7 +269,7 @@ dist_mat <- dist(coords)
 # Set Priors
 # ----------------------
 priors <- list(alpha.normal = list(mean = 0, var = 2.72),
-               beta.normal = list(mean = 0, var = 100), 
+               beta.normal = list(mean = 0, var = 2.72), 
                kappa.unif = c(0, 100), 
                sigma.sq.mu.ig = list(0.1, 0.1),
                sigma.sq.p.ig = list(0.1, 0.1),
@@ -275,8 +294,8 @@ tuning <- list(beta = 0.5,
 # ----------------------
 # Initial values
 # ----------------------
-F23_inits <- list(alpha = 0,
-                  beta = 0,
+F23_inits <- list(alpha = 5,
+                  beta = 5,
                   kappa = 0.5,
                   sigma.sq.p = 0.5,
                   sigma.sq.mu = 0.5,
@@ -289,15 +308,161 @@ F23_inits <- list(alpha = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F23_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+
+
+# F23_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+#                 det.formula = ~ (1|DOY),
+#                 data = F23_spA_dat,
+#                 family = 'Poisson',
+#                 cov.model = 'exponential',
+#                 NNGP = TRUE, 
+#                 n.neighbors = 15,
+#                 search.type = 'cb',
+#                 inits = F23_inits,
+#                 priors = priors,
+#                 tuning = tuning,
+#                 accept.rate = 0.43,
+#                 n.batch = n.batch,
+#                 batch.length = batch.length,
+#                 n.burn = n.burn,
+#                 n.thin = n.thin,
+#                 n.chains = n.chains,
+#                 verbose = TRUE,
+#                 n.omp.threads = n.omp.threads,
+#                 n.report = 5000
+# )
+
+
+F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
+                  det.formula = ~ (1|DOY),
+                  data = F23_spA_dat,
+                  family = 'NB',
+                  inits = F23_inits,
+                  priors = priors,
+                  tuning = tuning,
+                  accept.rate = 0.43,
+                  n.batch = n.batch,
+                  batch.length = batch.length,
+                  n.burn = n.burn,
+                  n.thin = n.thin,
+                  n.chains = n.chains,
+                  verbose = TRUE,
+                  n.omp.threads = n.omp.threads,
+                  n.report = 5000
+)
+ 
+# ----------------------
+# Checking Convergence
+# ----------------------
+
+# # Rhat values of 1.0 to 1.1 indicate good mixing
+# F23_fm1$rhat 
+# 
+# # Trace Plots
+# plot(F23_fm1, 'beta', density = FALSE)       # Abundance parameters
+# plot(F23_fm1, 'alpha', density = FALSE)      # Detection parameters
+# plot(F23_fm1, 'sigma.sq.p', density = FALSE) # Random effect
+# 
+# # Check fit
+# F23_ppc1 <- ppcAbund(F23_fm1, fit.stat = "chi-squared", group = 1)
+# summary(F23_ppc1)
+
+# ----------------------
+# Abundance Estimates 
+# ----------------------
+
+# # F23_fm1$N.samples is abundance estimate per site
+# print(F23_fm1$N.samples)
+# mean(F23_fm1$N.samples)
+# 
+# # Summarizing estimates by site
+# F23_all_site_ests <- rowSums(F23_fm1$N.samples)
+# 
+# # Total number of survey days
+# survey_days <-  max(F23_wtd_cams$survey_end) - min(F23_wtd_cams$survey_start)
+# tot_survey_days <- survey_days * 27
+# 
+# # Area surveyed = area surveyed by camera * number of cameras 
+# area_surveyed = offset_acre * 27
+# 
+# # Total surveyed area = total area by camera * total days surveyed
+# tot_surveyed_area = area_surveyed * tot_survey_days
+# 
+# # mean(F23_fm1$N.samples) / tot_surveyed_area * 2710
+# 
+# # Create a density matrix which is the latent abundance across sites divided by the area surveyed
+# F23_dens_vec <- F23_all_site_ests / tot_surveyed_area
+# 
+# # Correcting desity estimates to total abundance in the area
+# F23_abund_vec <- F23_dens_vec * 2710
+# 
+# # Compute summary statistics
+# F23_abund_summary <- data.frame(Model = "Cam Nmix",
+#                                 Season = "Fall 2023",
+#                                 Data = "Camera",
+#                                 Season_Model = "F23 Cam Nmix",
+#                                 N = mean(F23_abund_vec, na.rm = TRUE),
+#                                 LCI = as.numeric(quantile(F23_abund_vec, probs = 0.025, na.rm = TRUE)),
+#                                 UCI = as.numeric(quantile(F23_abund_vec, probs = 0.975, na.rm = TRUE))
+# )
+# 
+# # Print Abundance Summary
+# print(F23_abund_summary)
+# 
+# # Export abundance estimates
+# saveRDS(F23_abund_summary, "./Model_Objects/F23_Cam_Nmix_AbundEst.rds")
+
+# -------------------------------------------------------
+#                     Winter 2024
+# -------------------------------------------------------
+
+# ----------------------
+# Initial values
+# ----------------------
+W24_inits <- list(alpha = 5,
+                  beta = 5,
+                  kappa = 0.5,
+                  sigma.sq.p = 0.5,
+                  sigma.sq.mu = 0.5,
+                  N = apply(W24_spA_dat$y, 1, max, na.rm = TRUE), 
+                  sigma.sq = 1, 
+                  phi = 3 / mean(dist_mat),
+                  w = rep(0, nrow(W24_spA_dat$y)))
+
+
+# ----------------------
+# Fit Model
+# ----------------------
+
+
+# W24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+#                 det.formula = ~ (1|DOY),
+#                 data = W24_spA_dat,
+#                 family = 'Poisson',
+#                 cov.model = 'exponential',
+#                 NNGP = TRUE, 
+#                 n.neighbors = 15,
+#                 search.type = 'cb',
+#                 inits = W24_inits,
+#                 priors = priors,
+#                 tuning = tuning,
+#                 accept.rate = 0.43,
+#                 n.batch = n.batch,
+#                 batch.length = batch.length,
+#                 n.burn = n.burn,
+#                 n.thin = n.thin,
+#                 n.chains = n.chains,
+#                 verbose = TRUE,
+#                 n.omp.threads = n.omp.threads,
+#                 n.report = 5000
+# )
+
+
+W24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
                 det.formula = ~ (1|DOY),
-                data = F23_spA_dat,
-                family = 'Poisson',
-                cov.model = 'exponential',
-                NNGP = TRUE, 
-                n.neighbors = 15,
-                search.type = 'cb',
-                inits = F23_inits,
+                data = W24_spA_dat,
+                family = 'NB',
+                inits = W24_inits,
                 priors = priors,
                 tuning = tuning,
                 accept.rate = 0.43,
@@ -311,161 +476,21 @@ F23_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
                 n.report = 5000
 )
 
-
 # ----------------------
 # Checking Convergence
 # ----------------------
 
-# Rhat values of 1.0 to 1.1 indicate good mixing
-F23_fm1$rhat 
-
-# Trace Plots
-# plot(F23_fm1, 'beta', density = FALSE)  # Abundance parameters
-# plot(F23_fm1, 'alpha', density = FALSE) # Detection parameters
-
-# Check fit
-F23_bm_ppc <- ppcAbund(F23_fm1, fit.stat = "chi-squared", group = 1)
-summary(F23_bm_ppc)
-
-# ----------------------
-# Abundance Estimates 
-# ----------------------
-
-# F23_fm1$N.samples is abundance estimate per site
-print(F23_fm1$N.samples)
-mean(F23_fm1$N.samples)
-
-# Summarizing estimates by site
-F23_all_site_ests <- rowSums(F23_fm1$N.samples)
-
-# Total number of survey days
-survey_days <-  max(F23_wtd_cams$survey_end) - min(F23_wtd_cams$survey_start)
-tot_survey_days <- survey_days * 27
-
-# Area surveyed = area surveyed by camera * number of cameras 
-area_surveyed = offset_acre * 27
-
-# Total surveyed area = total area by camera * total days surveyed
-tot_surveyed_area = area_surveyed * tot_survey_days
-
-# mean(F23_fm1$N.samples) / tot_surveyed_area * 2710
-
-# Create a density matrix which is the latent abundance across sites divided by the area surveyed
-F23_dens_vec <- F23_all_site_ests / tot_surveyed_area
-
-# Correcting desity estimates to total abundance in the area
-F23_abund_vec <- F23_dens_vec * 2710
-
-# Compute summary statistics
-F23_abund_summary <- data.frame(Model = "Cam Nmix",
-                                Season = "Fall 2023",
-                                Data = "Camera",
-                                Season_Model = "F23 Cam Nmix",
-                                N = mean(F23_abund_vec, na.rm = TRUE),
-                                LCI = as.numeric(quantile(F23_abund_vec, probs = 0.025, na.rm = TRUE)),
-                                UCI = as.numeric(quantile(F23_abund_vec, probs = 0.975, na.rm = TRUE))
-)
-
-# Print Abundance Summary
-print(F23_abund_summary)
-
-# Export abundance estimates
-saveRDS(F23_abund_summary, "./Model_Objects/F23_Cam_Nmix_AbundEst.rds")
-
-
-# -------------------------------------------------------
-#                     Winter 2024
-# -------------------------------------------------------
-
-# ----------------------
-# Initial values
-# ----------------------
-W24_inits <- list(alpha = 0,
-                  beta = 0,
-                  kappa = 0.5,
-                  sigma.sq.p = 0.5,
-                  sigma.sq.mu = 0.5,
-                  N = apply(W24_spA_dat$y, 1, max, na.rm = TRUE), 
-                  sigma.sq = 1, 
-                  phi = 3 / mean(dist_mat),
-                  w = rep(0, nrow(W24_spA_dat$y)))
-
-
-# ----------------------
-# Fit Model
-# ----------------------
-W24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
-                  det.formula = ~ (1|DOY),
-                  data = W24_spA_dat,
-                  family = 'Poisson',
-                  cov.model = 'exponential',
-                  NNGP = TRUE, 
-                  n.neighbors = 15,
-                  search.type = 'cb',
-                  inits = W24_inits,
-                  priors = priors,
-                  tuning = tuning,
-                  accept.rate = 0.43,
-                  n.batch = n.batch,
-                  batch.length = batch.length,
-                  n.burn = n.burn,
-                  n.thin = n.thin,
-                  n.chains = n.chains,
-                  verbose = TRUE,
-                  n.omp.threads = n.omp.threads,
-                  n.report = 5000
-)
-
-# ----------------------
-# Checking Convergence
-# ----------------------
-
-
-# Rhat values of 1.0 to 1.1 indicate good mixing
-W24_fm1$rhat 
-
-# Trace Plots
-# plot(W24_fm1, 'beta', density = FALSE)  # Abundance parameters
-# plot(W24_fm1, 'alpha', density = FALSE) # Detection parameters
-
-# Check fit
-W24_bm_ppc <- ppcAbund(W24_fm1, fit.stat = "chi-squared", group = 1)
-summary(W24_bm_ppc)
-
-# ----------------------
-# Abundance Estimates 
-# ----------------------
-
-# # W24_fm1$N.samples is abundance estimate per site
-# print(W24_fm1$N.samples)
+# # Rhat values of 1.0 to 1.1 indicate good mixing
+# W24_fm1$rhat 
 # 
-# # Summarizing estimates by site
-# W24_all_site_ests <- rowSums(W24_fm1$N.samples)
+# # Trace Plots
+# plot(W24_fm1, 'beta', density = FALSE)       # Abundance parameters
+# plot(W24_fm1, 'alpha', density = FALSE)      # Detection parameters
+# plot(W24_fm1, 'sigma.sq.p', density = FALSE) # Random effect
 # 
-# # Total area surveyed = area surveyed by camera * number of cameras
-# area_surveyed = offset_acre * 27
-# 
-# # Create a density matrix which is the latent abundance across sites divided by the area surveyed
-# W24_dens_vec <-  (W24_all_site_ests / area_surveyed)
-# 
-# # Correcting desity estimates to total abundance in the area
-# W24_abund_vec <- W24_dens_vec * 2710
-# 
-# # Compute summary statistics
-# W24_abund_summary <- data.frame(Model = "Cam Nmix", 
-#                                 Season = "Winter 2024",
-#                                 Data = "Camera",
-#                                 Season_Model = "W24 Cam Nmix",
-#                                 N = mean(W24_abund_vec, na.rm = TRUE),  
-#                                 LCI = as.numeric(quantile(W24_abund_vec, probs = 0.025, na.rm = TRUE)), 
-#                                 UCI = as.numeric(quantile(W24_abund_vec, probs = 0.975, na.rm = TRUE)) 
-# )
-# 
-# # Print Abundance Summary
-# print(W24_abund_summary)
-# 
-# # Export abundance estimates
-# saveRDS(W24_abund_summary, "./Model_Objects/W24_Cam_Nmix_AbundEst.rds")
+# # Check fit
+# W24_ppc1 <- ppcAbund(W24_fm1, fit.stat = "chi-squared", group = 1)
+# summary(W24_ppc1)
 
 # -------------------------------------------------------
 #                     Fall 2024
@@ -474,8 +499,8 @@ summary(W24_bm_ppc)
 # ----------------------
 # Initial values
 # ----------------------
-F24_inits <- list(alpha = 0,
-                  beta = 0,
+F24_inits <- list(alpha = 5,
+                  beta = 5,
                   kappa = 0.5,
                   sigma.sq.p = 0.5,
                   sigma.sq.mu = 0.5,
@@ -488,75 +513,62 @@ F24_inits <- list(alpha = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
-                  det.formula = ~ (1|DOY),
-                  data = F24_spA_dat,
-                  family = 'Poisson',
-                  cov.model = 'exponential',
-                  NNGP = TRUE, 
-                  n.neighbors = 15,
-                  search.type = 'cb',
-                  inits = F24_inits,
-                  priors = priors,
-                  tuning = tuning,
-                  accept.rate = 0.43,
-                  n.batch = n.batch,
-                  batch.length = batch.length,
-                  n.burn = n.burn,
-                  n.thin = n.thin,
-                  n.chains = n.chains,
-                  verbose = TRUE,
-                  n.omp.threads = n.omp.threads,
-                  n.report = 5000
+
+
+# F24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+#                 det.formula = ~ (1|DOY),
+#                 data = F24_spA_dat,
+#                 family = 'Poisson',
+#                 cov.model = 'exponential',
+#                 NNGP = TRUE, 
+#                 n.neighbors = 15,
+#                 search.type = 'cb',
+#                 inits = F24_inits,
+#                 priors = priors,
+#                 tuning = tuning,
+#                 accept.rate = 0.43,
+#                 n.batch = n.batch,
+#                 batch.length = batch.length,
+#                 n.burn = n.burn,
+#                 n.thin = n.thin,
+#                 n.chains = n.chains,
+#                 verbose = TRUE,
+#                 n.omp.threads = n.omp.threads,
+#                 n.report = 5000
+# )
+
+
+F24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
+                det.formula = ~ (1|DOY),
+                data = F24_spA_dat,
+                family = 'NB',
+                inits = F24_inits,
+                priors = priors,
+                tuning = tuning,
+                accept.rate = 0.43,
+                n.batch = n.batch,
+                batch.length = batch.length,
+                n.burn = n.burn,
+                n.thin = n.thin,
+                n.chains = n.chains,
+                verbose = TRUE,
+                n.omp.threads = n.omp.threads,
+                n.report = 5000
 )
 
 # ----------------------
 # Checking Convergence
 # ----------------------
 
+# # Rhat values of 1.0 to 1.1 indicate good mixing
+# F24_fm1$rhat 
+# 
+# # Trace Plots
+# plot(F24_fm1, 'beta', density = FALSE)       # Abundance parameters
+# plot(F24_fm1, 'alpha', density = FALSE)      # Detection parameters
+# plot(F24_fm1, 'sigma.sq.p', density = FALSE) # Random effect
+# 
+# # Check fit
+# F24_ppc1 <- ppcAbund(F24_fm1, fit.stat = "chi-squared", group = 1)
+# summary(F24_ppc1)
 
-# Rhat values of 1.0 to 1.1 indicate good mixing
-F24_fm1$rhat 
-
-# Trace Plots
-# plot(F24_fm1, 'beta', density = FALSE)  # Abundance parameters
-# plot(F24_fm1, 'alpha', density = FALSE) # Detection parameters
-
-# Check fit
-F24_bm_ppc <- ppcAbund(F24_fm1, fit.stat = "chi-squared", group = 1)
-summary(F24_bm_ppc)
-
-# ----------------------
-# Abundance Estimates 
-# ----------------------
-
-# # F24_fm1$N.samples is abundance estimate per site
-# print(F24_fm1$N.samples)
-# 
-# # Summarizing estimates by site
-# F24_all_site_ests <- rowSums(F24_fm1$N.samples)
-# 
-# # Total area surveyed = area surveyed by camera * number of cameras
-# area_surveyed = offset_acre * 27
-# 
-# # Create a density matrix which is the latent abundance across sites divided by the area surveyed
-# F24_dens_vec <-  (F24_all_site_ests / area_surveyed)
-# 
-# # Correcting desity estimates to total abundance in the area
-# F24_abund_vec <- F24_dens_vec * 2710
-# 
-# # Compute summary statistics
-# F24_abund_summary <- data.frame(Model = "Cam Nmix", 
-#                                 Season = "Fall 2024",
-#                                 Data = "Camera",
-#                                 Season_Model = "F24 Cam Nmix",
-#                                 N = mean(F24_abund_vec, na.rm = TRUE),  
-#                                 LCI = as.numeric(quantile(F24_abund_vec, probs = 0.025, na.rm = TRUE)), 
-#                                 UCI = as.numeric(quantile(F24_abund_vec, probs = 0.975, na.rm = TRUE)) 
-# )
-# 
-# # Print Abundance Summary
-# print(F24_abund_summary)
-# 
-# # Export abundance estimates
-# saveRDS(F24_abund_summary, "./Model_Objects/F24_Cam_Nmix_AbundEst.rds")
