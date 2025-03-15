@@ -65,13 +65,44 @@ site_dat <- read.csv("./Data/Survey_Data/Camera_Data/Cam_sites.csv")
 
 # Subsetting times from 5-9am and 5-9pm
 F23_wtd_cams <- F23_wtd_cams %>%
-  filter((time >= "05:00:00" & time <= "90:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00"))
+  filter((time >= "05:00:00" & time <= "09:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00")
+)
 
 W24_wtd_cams <- W24_wtd_cams %>%
-  filter((time >= "05:00:00" & time <= "90:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00"))
+  filter((time >= "05:00:00" & time <= "09:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00")
+)
 
 F24_wtd_cams <- F24_wtd_cams %>%
-  filter((time >= "05:00:00" & time <= "90:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00"))
+  filter((time >= "05:00:00" & time <= "09:00:00" ) | (time >= "17:00:00 "& time <= "21:00:00")
+)
+
+# -------------------------------------------------------
+# Subsetting Data to Two Weeks
+# ------------------------------------------------------- 
+
+# Fall 2023
+# min(F23_wtd_cams$day_of_year)
+# min(F23_wtd_cams$day_of_year) + 7
+
+F23_wtd_cams <- F23_wtd_cams %>%
+  filter(day_of_year >= 251 & day_of_year <= 258)
+ 
+# Winter 2024
+# min(W24_wtd_cams$day_of_year)
+# min(W24_wtd_cams$day_of_year) + 7
+
+W24_wtd_cams <- W24_wtd_cams %>%
+  filter(day_of_year >= 41 & day_of_year <= 48)
+
+# Fall 2024
+# min(F24_wtd_cams$day_of_year)
+# min(F24_wtd_cams$day_of_year) + 7
+
+F24_wtd_cams <- F24_wtd_cams %>%
+  filter(day_of_year >= 251 & day_of_year <= 258)
+
+
+ 
 
 # -------------------------------------------------------
 # Creating Detection Matrices
@@ -79,16 +110,16 @@ F24_wtd_cams <- F24_wtd_cams %>%
 
 # Initialize a site x survey matrix for each season
 F23_grid <- expand.grid(site_number = 1:27,
-                           day_of_year = min(F23_wtd_cams$survey_start):max(F23_wtd_cams$survey_end)
+                           day_of_year = min(F23_wtd_cams$day_of_year):max(F23_wtd_cams$day_of_year)
         
 )
 
 W24_grid <- expand.grid(site_number = 1:27,
-                            day_of_year = min(W24_wtd_cams$survey_start):max(W24_wtd_cams$survey_end)
+                            day_of_year = min(W24_wtd_cams$day_of_year):max(W24_wtd_cams$day_of_year)
 )
 
 F24_grid <- expand.grid(site_number = 1:27,
-                            day_of_year = min(F24_wtd_cams$survey_start):max(F24_wtd_cams$survey_end)
+                            day_of_year = min(F24_wtd_cams$day_of_year):max(F24_wtd_cams$day_of_year)
 )
 
 # Summarize counts by site and survey day
@@ -250,11 +281,11 @@ str(F24_spA_dat)
 # ----------------------
 # MCMC Specifications
 # ----------------------
-batch.length <- 50
-n.batch <- 20000
+batch.length <- 25
+n.batch <- 10000
 batch.length * n.batch # Total number of MCMC samples per chain
 n.burn <- 60000
-n.thin <- 15
+n.thin <- 10
 n.chains <- 3
 n.omp.threads <- 9
 
@@ -309,13 +340,12 @@ F23_inits <- list(alpha = 5,
 # Fit Model
 # ----------------------
 
-
-# F23_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+# F23_fm1sp <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
 #                 det.formula = ~ (1|DOY),
 #                 data = F23_spA_dat,
 #                 family = 'Poisson',
 #                 cov.model = 'exponential',
-#                 NNGP = TRUE, 
+#                 NNGP = TRUE,
 #                 n.neighbors = 15,
 #                 search.type = 'cb',
 #                 inits = F23_inits,
@@ -333,7 +363,7 @@ F23_inits <- list(alpha = 5,
 # )
 
 
-F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
+F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx),
                   det.formula = ~ (1|DOY),
                   data = F23_spA_dat,
                   family = 'NB',
@@ -350,13 +380,14 @@ F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
                   n.omp.threads = n.omp.threads,
                   n.report = 5000
 )
- 
+
 # ----------------------
 # Checking Convergence
 # ----------------------
 
 # # Rhat values of 1.0 to 1.1 indicate good mixing
-# F23_fm1$rhat 
+# F23_fm1$rhat
+# F23_fm1sp$rhat
 # 
 # # Trace Plots
 # plot(F23_fm1, 'beta', density = FALSE)       # Abundance parameters
@@ -371,46 +402,49 @@ F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
 # Abundance Estimates 
 # ----------------------
 
-# # F23_fm1$N.samples is abundance estimate per site
-# print(F23_fm1$N.samples)
-# mean(F23_fm1$N.samples)
-# 
-# # Summarizing estimates by site
-# F23_all_site_ests <- rowSums(F23_fm1$N.samples)
-# 
-# # Total number of survey days
-# survey_days <-  max(F23_wtd_cams$survey_end) - min(F23_wtd_cams$survey_start)
-# tot_survey_days <- survey_days * 27
-# 
-# # Area surveyed = area surveyed by camera * number of cameras 
-# area_surveyed = offset_acre * 27
-# 
-# # Total surveyed area = total area by camera * total days surveyed
-# tot_surveyed_area = area_surveyed * tot_survey_days
-# 
-# # mean(F23_fm1$N.samples) / tot_surveyed_area * 2710
-# 
-# # Create a density matrix which is the latent abundance across sites divided by the area surveyed
-# F23_dens_vec <- F23_all_site_ests / tot_surveyed_area
-# 
-# # Correcting desity estimates to total abundance in the area
-# F23_abund_vec <- F23_dens_vec * 2710
-# 
-# # Compute summary statistics
-# F23_abund_summary <- data.frame(Model = "Cam Nmix",
-#                                 Season = "Fall 2023",
-#                                 Data = "Camera",
-#                                 Season_Model = "F23 Cam Nmix",
-#                                 N = mean(F23_abund_vec, na.rm = TRUE),
-#                                 LCI = as.numeric(quantile(F23_abund_vec, probs = 0.025, na.rm = TRUE)),
-#                                 UCI = as.numeric(quantile(F23_abund_vec, probs = 0.975, na.rm = TRUE))
-# )
-# 
-# # Print Abundance Summary
-# print(F23_abund_summary)
-# 
-# # Export abundance estimates
-# saveRDS(F23_abund_summary, "./Model_Objects/F23_Cam_Nmix_AbundEst.rds")
+# w.means <- apply(F23_fm1sp$w.samples, 2, mean)
+# hist(w.means)
+
+# F23_fm1$N.samples is abundance estimate per site
+print(F23_fm1$N.samples)
+
+
+# Summarizing estimates by site
+F23_all_site_ests <- rowSums(F23_fm1$N.samples)
+
+# Total number of survey days
+survey_days <-  max(F23_wtd_cams$day_of_year) - min(F23_wtd_cams$day_of_year)
+tot_survey_days <- survey_days * 27
+
+# Area surveyed = area surveyed by camera * number of cameras
+area_surveyed = offset_acre * 27
+
+# Total surveyed area = total area by camera * total days surveyed * total hours surveyed
+tot_surveyed_area = area_surveyed * tot_survey_days * 10
+
+# mean(F23_fm1$N.samples) / area_surveyed * 2710
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+F23_dens_vec <- F23_all_site_ests / tot_surveyed_area
+
+# Correcting desity estimates to total abundance in the area
+F23_abund_vec <- F23_dens_vec * 2710
+
+# Compute summary statistics
+F23_abund_summary <- data.frame(Model = "Cam Nmix",
+                                Season = "Fall 2023",
+                                Data = "Camera",
+                                Season_Model = "F23 Cam Nmix",
+                                N = mean(F23_abund_vec, na.rm = TRUE),
+                                LCI = as.numeric(quantile(F23_abund_vec, probs = 0.025, na.rm = TRUE)),
+                                UCI = as.numeric(quantile(F23_abund_vec, probs = 0.975, na.rm = TRUE))
+)
+
+# Print Abundance Summary
+print(F23_abund_summary)
+
+# Export abundance estimates
+saveRDS(F23_abund_summary, "./Model_Objects/F23_Cam_Nmix_AbundEst.rds")
 
 # -------------------------------------------------------
 #                     Winter 2024
@@ -433,30 +467,6 @@ W24_inits <- list(alpha = 5,
 # ----------------------
 # Fit Model
 # ----------------------
-
-
-# W24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
-#                 det.formula = ~ (1|DOY),
-#                 data = W24_spA_dat,
-#                 family = 'Poisson',
-#                 cov.model = 'exponential',
-#                 NNGP = TRUE, 
-#                 n.neighbors = 15,
-#                 search.type = 'cb',
-#                 inits = W24_inits,
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin,
-#                 n.chains = n.chains,
-#                 verbose = TRUE,
-#                 n.omp.threads = n.omp.threads,
-#                 n.report = 5000
-# )
-
 
 W24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
                 det.formula = ~ (1|DOY),
@@ -492,6 +502,54 @@ W24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
 # W24_ppc1 <- ppcAbund(W24_fm1, fit.stat = "chi-squared", group = 1)
 # summary(W24_ppc1)
 
+# ----------------------
+# Abundance Estimates 
+# ----------------------
+
+# w.means <- apply(W24_fm1sp$w.samples, 2, mean)
+# hist(w.means)
+
+# W24_fm1$N.samples is abundance estimate per site
+print(W24_fm1$N.samples)
+
+
+# Summarizing estimates by site
+W24_all_site_ests <- rowSums(W24_fm1$N.samples)
+
+# Total number of survey days
+survey_days <-  max(W24_wtd_cams$day_of_year) - min(W24_wtd_cams$day_of_year)
+tot_survey_days <- survey_days * 27
+
+# Area surveyed = area surveyed by camera * number of cameras
+area_surveyed = offset_acre * 27
+
+# Total surveyed area = total area by camera * total days surveyed * total hours surveyed
+tot_surveyed_area = area_surveyed * tot_survey_days * 10
+
+# mean(W24_fm1$N.samples) / area_surveyed * 2710
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+W24_dens_vec <- W24_all_site_ests / tot_surveyed_area
+
+# Correcting desity estimates to total abundance in the area
+W24_abund_vec <- W24_dens_vec * 2710
+
+# Compute summary statistics
+W24_abund_summary <- data.frame(Model = "Cam Nmix",
+                                Season = "Winter 2024",
+                                Data = "Camera",
+                                Season_Model = "W24 Cam Nmix",
+                                N = mean(W24_abund_vec, na.rm = TRUE),
+                                LCI = as.numeric(quantile(W24_abund_vec, probs = 0.025, na.rm = TRUE)),
+                                UCI = as.numeric(quantile(W24_abund_vec, probs = 0.975, na.rm = TRUE))
+)
+
+# Print Abundance Summary
+print(W24_abund_summary)
+
+# Export abundance estimates
+saveRDS(W24_abund_summary, "./Model_Objects/W24_Cam_Nmix_AbundEst.rds")
+
 # -------------------------------------------------------
 #                     Fall 2024
 # -------------------------------------------------------
@@ -513,30 +571,6 @@ F24_inits <- list(alpha = 5,
 # ----------------------
 # Fit Model
 # ----------------------
-
-
-# F24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
-#                 det.formula = ~ (1|DOY),
-#                 data = F24_spA_dat,
-#                 family = 'Poisson',
-#                 cov.model = 'exponential',
-#                 NNGP = TRUE, 
-#                 n.neighbors = 15,
-#                 search.type = 'cb',
-#                 inits = F24_inits,
-#                 priors = priors,
-#                 tuning = tuning,
-#                 accept.rate = 0.43,
-#                 n.batch = n.batch,
-#                 batch.length = batch.length,
-#                 n.burn = n.burn,
-#                 n.thin = n.thin,
-#                 n.chains = n.chains,
-#                 verbose = TRUE,
-#                 n.omp.threads = n.omp.threads,
-#                 n.report = 5000
-# )
-
 
 F24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
                 det.formula = ~ (1|DOY),
@@ -572,3 +606,50 @@ F24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
 # F24_ppc1 <- ppcAbund(F24_fm1, fit.stat = "chi-squared", group = 1)
 # summary(F24_ppc1)
 
+# ----------------------
+# Abundance Estimates 
+# ----------------------
+
+# w.means <- apply(F24_fm1sp$w.samples, 2, mean)
+# hist(w.means)
+
+# F24_fm1$N.samples is abundance estimate per site
+print(F24_fm1$N.samples)
+
+
+# Summarizing estimates by site
+F24_all_site_ests <- rowSums(F24_fm1$N.samples)
+
+# Total number of survey days
+survey_days <-  max(F24_wtd_cams$day_of_year) - min(F24_wtd_cams$day_of_year)
+tot_survey_days <- survey_days * 27
+
+# Area surveyed = area surveyed by camera * number of cameras
+area_surveyed = offset_acre * 27
+
+# Total surveyed area = total area by camera * total days surveyed * total hours surveyed
+tot_surveyed_area = area_surveyed * tot_survey_days * 10
+
+# mean(F24_fm1$N.samples) / area_surveyed * 2710
+
+# Create a density matrix which is the latent abundance across sites divided by the area surveyed
+F24_dens_vec <- F24_all_site_ests / tot_surveyed_area
+
+# Correcting desity estimates to total abundance in the area
+F24_abund_vec <- F24_dens_vec * 2710
+
+# Compute summary statistics
+F24_abund_summary <- data.frame(Model = "Cam Nmix",
+                                Season = "Fall 2024",
+                                Data = "Camera",
+                                Season_Model = "F24 Cam Nmix",
+                                N = mean(F24_abund_vec, na.rm = TRUE),
+                                LCI = as.numeric(quantile(F24_abund_vec, probs = 0.025, na.rm = TRUE)),
+                                UCI = as.numeric(quantile(F24_abund_vec, probs = 0.975, na.rm = TRUE))
+)
+
+# Print Abundance Summary
+print(F24_abund_summary)
+
+# Export abundance estimates
+saveRDS(F24_abund_summary, "./Model_Objects/F24_Cam_Nmix_AbundEst.rds")
