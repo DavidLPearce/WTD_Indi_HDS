@@ -35,17 +35,17 @@ setwd(".")
 # Fall 2023 Estimates 
 F23_Heli_DS_est <- readRDS("./Model_Objects/F23_Heli_DS_AbundEst.rds")
 F23_Heli_HDS_est <- readRDS("./Model_Objects/F23_Heli_HDS_AbundEst.rds")
-# F23_Cam_Nmix_est <- readRDS("./Model_Objects/F23_Cam_Nmix_AbundEst.rds")
+F23_Cam_Nmix_est <- readRDS("./Model_Objects/F23_Cam_Nmix_AbundEst.rds")
 
 # Winter 2024 Estimates
 W24_Heli_DS_est <- readRDS("./Model_Objects/W24_Heli_DS_AbundEst.rds")
 W24_Heli_HDS_est <- readRDS("./Model_Objects/W24_Heli_HDS_AbundEst.rds")
-# W24_Cam_Nmix_est <- readRDS("./Model_Objects/W24_Cam_Nmix_AbundEst.rds")
+W24_Cam_Nmix_est <- readRDS("./Model_Objects/W24_Cam_Nmix_AbundEst.rds")
 
 # Fall 2024 Estimates
 F24_Heli_DS_est <- readRDS("./Model_Objects/F24_Heli_DS_AbundEst.rds")
 F24_Heli_HDS_est <- readRDS("./Model_Objects/F24_Heli_HDS_AbundEst.rds")
-# F24_Cam_Nmix_est <- readRDS("./Model_Objects/F24_Cam_Nmix_AbundEst.rds")
+F24_Cam_Nmix_est <- readRDS("./Model_Objects/F24_Cam_Nmix_AbundEst.rds")
 
 
 # Winter 2025 Estimates
@@ -74,31 +74,44 @@ print(All_DS_est)
 # -------------------------------
 
 # Combining all Helicopter HDS estimates
-All_Heli_HDS <- rbind(F23_Heli_HDS_est, W24_Heli_HDS_est, F24_Heli_HDS_est, W25_Heli_HDS_est)
+All_Heli_HDS <- rbind(F23_Heli_HDS_est, W24_Heli_HDS_est, F24_Heli_HDS_est)
 
 # Take a look
 print(All_Heli_HDS)
 
 # -------------------------------
+# Organizing Nmix Estimates 
+# -------------------------------
+
+# Combining all Camera Nmix estimates
+All_Cam_Nmix <- rbind(F23_Cam_Nmix_est, W24_Cam_Nmix_est, F24_Cam_Nmix_est)
+
+# Take a look
+print(All_Cam_Nmix)
+
+# -------------------------------
 # Combine Across Surveys and models 
 # -------------------------------
 
-All_estimates <- rbind(All_DS_est, All_Heli_HDS) 
+All_estimates <- rbind(All_DS_est, All_Heli_HDS, All_Cam_Nmix) 
 
 # Season and models are factors for plotting 
 All_estimates <- All_estimates %>%
-  mutate(Season_Model = factor(Season_Model, levels = c(# Fall 2023
-                                                        "F23 Heli DS", "F23 Heli HDS",
-                                                        
-                                                        # Winter 2024
-                                                        "W24 Heli DS", "W24 Heli HDS", 
-                                                        
-                                                        # Fall 2024
-                                                        "F24 Heli DS", "F24 Heli HDS", 
-                                                        
-                                                        # Winter 2025
-                                                        "W25 Heli DS", "W25 Heli HDS"  
-                                                        )) 
+  mutate(Season_Model = factor(Season_Model, 
+                               levels = c(
+                                 
+                        # Fall 2023
+                        "F23 Heli DS", "F23 Heli HDS", "F23 Cam Nmix",
+                        
+                        # Winter 2024
+                        "W24 Heli DS", "W24 Heli HDS", "W24 Cam Nmix",
+                        
+                        # Fall 2024
+                        "F24 Heli DS", "F24 Heli HDS", "F24 Cam Nmix",
+                        
+                        # Winter 2025
+                        "W25 Heli DS", "W25 Heli HDS"  
+                        )) 
 )  
 
 # -------------------------------
