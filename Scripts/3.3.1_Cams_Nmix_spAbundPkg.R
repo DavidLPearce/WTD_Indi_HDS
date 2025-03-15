@@ -282,7 +282,7 @@ str(F24_spA_dat)
 # MCMC Specifications
 # ----------------------
 batch.length <- 25
-n.batch <- 10000
+n.batch <- 40000
 batch.length * n.batch # Total number of MCMC samples per chain
 n.burn <- 60000
 n.thin <- 10
@@ -299,8 +299,8 @@ dist_mat <- dist(coords)
 # ----------------------
 # Set Priors
 # ----------------------
-priors <- list(alpha.normal = list(mean = 0, var = 2.72),
-               beta.normal = list(mean = 0, var = 2.72), 
+priors <- list(alpha.normal = list(mean = 0, var = 100),
+               beta.normal = list(mean = 0, var = 100), 
                kappa.unif = c(0, 100), 
                sigma.sq.mu.ig = list(0.1, 0.1),
                sigma.sq.p.ig = list(0.1, 0.1),
@@ -340,7 +340,29 @@ F23_inits <- list(alpha = 5,
 # Fit Model
 # ----------------------
 
-# F23_fm1sp <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+
+
+
+F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx),
+                  det.formula = ~ (1|DOY),
+                  data = F23_spA_dat,
+                  family = 'NB',
+                  inits = F23_inits,
+                  priors = priors,
+                  tuning = tuning,
+                  accept.rate = 0.43,
+                  n.batch = n.batch,
+                  batch.length = batch.length,
+                  n.burn = n.burn,
+                  n.thin = n.thin,
+                  n.chains = n.chains,
+                  verbose = TRUE,
+                  n.omp.threads = n.omp.threads,
+                  n.report = 5000
+)
+
+
+# F23_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
 #                 det.formula = ~ (1|DOY),
 #                 data = F23_spA_dat,
 #                 family = 'Poisson',
@@ -361,25 +383,8 @@ F23_inits <- list(alpha = 5,
 #                 n.omp.threads = n.omp.threads,
 #                 n.report = 5000
 # )
+# 
 
-
-F23_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx),
-                  det.formula = ~ (1|DOY),
-                  data = F23_spA_dat,
-                  family = 'NB',
-                  inits = F23_inits,
-                  priors = priors,
-                  tuning = tuning,
-                  accept.rate = 0.43,
-                  n.batch = n.batch,
-                  batch.length = batch.length,
-                  n.burn = n.burn,
-                  n.thin = n.thin,
-                  n.chains = n.chains,
-                  verbose = TRUE,
-                  n.omp.threads = n.omp.threads,
-                  n.report = 5000
-)
 
 # ----------------------
 # Checking Convergence
@@ -486,6 +491,30 @@ W24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
                 n.report = 5000
 )
 
+# 
+# W24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+#                   det.formula = ~ (1|DOY),
+#                   data = W24_spA_dat,
+#                   family = 'Poisson',
+#                   cov.model = 'exponential',
+#                   NNGP = TRUE,
+#                   n.neighbors = 15,
+#                   search.type = 'cb',
+#                   inits = W24_inits,
+#                   priors = priors,
+#                   tuning = tuning,
+#                   accept.rate = 0.43,
+#                   n.batch = n.batch,
+#                   batch.length = batch.length,
+#                   n.burn = n.burn,
+#                   n.thin = n.thin,
+#                   n.chains = n.chains,
+#                   verbose = TRUE,
+#                   n.omp.threads = n.omp.threads,
+#                   n.report = 5000
+# )
+
+
 # ----------------------
 # Checking Convergence
 # ----------------------
@@ -589,6 +618,30 @@ F24_fm1 <- NMix(abund.formula = ~ scale(woody_lrgPInx) + scale(herb_ClmIdx),
                 n.omp.threads = n.omp.threads,
                 n.report = 5000
 )
+
+# F24_fm1 <- spNMix(abund.formula = ~ scale(woody_lrgPInx),
+#                   det.formula = ~ (1|DOY),
+#                   data = F24_spA_dat,
+#                   family = 'Poisson',
+#                   cov.model = 'exponential',
+#                   NNGP = TRUE,
+#                   n.neighbors = 15,
+#                   search.type = 'cb',
+#                   inits = F24_inits,
+#                   priors = priors,
+#                   tuning = tuning,
+#                   accept.rate = 0.43,
+#                   n.batch = n.batch,
+#                   batch.length = batch.length,
+#                   n.burn = n.burn,
+#                   n.thin = n.thin,
+#                   n.chains = n.chains,
+#                   verbose = TRUE,
+#                   n.omp.threads = n.omp.threads,
+#                   n.report = 5000
+# )
+# 
+
 
 # ----------------------
 # Checking Convergence
