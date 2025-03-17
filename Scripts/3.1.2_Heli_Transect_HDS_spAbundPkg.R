@@ -421,6 +421,25 @@ W25spA_site_covs <- spA_site_covs %>%
 # Formatting Transects
 # ----------------------
 
+# Need to calculate the midpoint of the transect since package can only accept
+# one set of GPS coordinates. The midpoint seems to be the most resonable.
+
+# Calculate Midpoints
+trans_midpt <- st_line_sample(transects, sample = 0.5) %>%
+  st_cast("POINT")  # Convert sample to POINT geometry
+
+# Extract X and Y coords
+trans_midpt_df <- st_coordinates(trans_midpt)
+
+# Add into transects sf
+transects$MidptX <- trans_midpt_df[, 1]  # X coordinate (Easting)
+transects$MidptY <- trans_midpt_df[, 2]  # Y coordinate (Northing)
+
+# View the result
+print(transects)
+
+
+
 # spDS does not allow duplicate site coordinates
 # since observation data has replicates and they are
 # stacked. A set of the transects coordinates needs to 
@@ -428,8 +447,8 @@ W25spA_site_covs <- spA_site_covs %>%
 
 # Apply shift function to each geometry in the sf object
 transects_shifted <- transects %>%
-  mutate(OriginX = OriginX + 0.1,  # Shift X by 1 m
-         OriginY = OriginY + 0.1)  # Shift Y by 1 m
+  mutate(MidptX = MidptX + 0.1,  # Shift X by 1 m
+         MidptY = MidptY + 0.1)  # Shift Y by 1 m
 
 # Modify IDs for original transects
 transects <- transects %>%
@@ -446,7 +465,7 @@ transects_combined <- bind_rows(transects, transects_shifted)
 
 # Extracting transect coordinates
 transect_coords <- transects_combined %>%
-  select(OriginX, OriginY)
+  select(MidptX, MidptY)
 
 # Remove geometry
 transect_coords <- as.data.frame(transect_coords)
@@ -470,28 +489,28 @@ offset <- c(transect_effort[,'Area_ac'], transect_effort[,'Area_ac'])
 # spAbundance use long formatting
 F23_spA_dat <- list(y = fall23_mat, 
                    covs = F23spA_site_covs, 
-                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   coords = transect_coords[,c('MidptX', 'MidptY')],
                    dist.breaks = c(0, 20, 40, 60, 100),
                    offset = offset
 ) 
 
 W24_spA_dat <- list(y = win24_mat, 
                    covs = W24spA_site_covs,
-                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   coords = transect_coords[,c('MidptX', 'MidptY')],
                    dist.breaks = c(0, 20, 40, 60, 100),
                    offset = offset
 )
 
 F24_spA_dat <- list(y = fall24_mat, 
                    covs = F24spA_site_covs,
-                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   coords = transect_coords[,c('MidptX', 'MidptY')],
                    dist.breaks = c(0, 20, 40, 60, 100),
                    offset = offset
 ) 
 
 W25_spA_dat <- list(y = win25_mat, 
                    covs = W25spA_site_covs, 
-                   coords = transect_coords[,c('OriginX', 'OriginY')],
+                   coords = transect_coords[,c('MidptX', 'MidptY')],
                    dist.breaks = c(0, 20, 40, 60, 100),
                    offset = offset
 )  
@@ -528,7 +547,7 @@ n.omp.threads <- 6
 # ----------------------
 
 # Pair-wise distances between all sites
-dist_mat <- dist(transect_coords[,c('OriginX', 'OriginY')])
+dist_mat <- dist(transect_coords[,c('MidptX', 'MidptY')])
 
 # ----------------------
 # Set Priors
@@ -577,7 +596,7 @@ F23_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F23_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+F23_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = F23_spA_dat,
                 family = 'Poisson',
@@ -676,7 +695,7 @@ W24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+W24_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = W24_spA_dat,
                 family = 'Poisson',
@@ -775,7 +794,7 @@ F24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+F24_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = F24_spA_dat,
                 family = 'Poisson',
@@ -874,7 +893,7 @@ W25_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W25_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),
+W25_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = W25_spA_dat,
                 family = 'Poisson',
