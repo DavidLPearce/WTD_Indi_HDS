@@ -82,24 +82,24 @@ F24_wtd_cams <- F24_wtd_cams %>%
 
 # Fall 2023
 # min(F23_wtd_cams$day_of_year)
-# min(F23_wtd_cams$day_of_year) + 7
+# min(F23_wtd_cams$day_of_year) + 4
 
 F23_wtd_cams <- F23_wtd_cams %>%
-  filter(day_of_year >= 251 & day_of_year <= 258)
+  filter(day_of_year >= 251 & day_of_year <= 255)
  
 # Winter 2024
 # min(W24_wtd_cams$day_of_year)
-# min(W24_wtd_cams$day_of_year) + 7
+# min(W24_wtd_cams$day_of_year) + 4
 
 W24_wtd_cams <- W24_wtd_cams %>%
-  filter(day_of_year >= 41 & day_of_year <= 48)
+  filter(day_of_year >= 41 & day_of_year <= 45)
 
 # Fall 2024
 # min(F24_wtd_cams$day_of_year)
-# min(F24_wtd_cams$day_of_year) + 7
+# min(F24_wtd_cams$day_of_year) + 4
 
 F24_wtd_cams <- F24_wtd_cams %>%
-  filter(day_of_year >= 251 & day_of_year <= 258)
+  filter(day_of_year >= 251 & day_of_year <= 255)
 
 
  
@@ -284,7 +284,7 @@ str(F24_spA_dat)
 batch.length <- 25
 n.batch <- 40000
 batch.length * n.batch # Total number of MCMC samples per chain
-n.burn <- 60000
+n.burn <- 100000
 n.thin <- 10
 n.chains <- 3
 n.omp.threads <- 9
