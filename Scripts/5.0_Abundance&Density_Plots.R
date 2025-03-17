@@ -12,14 +12,11 @@
 #
 # ------------------------------------------------------------------------------
 
-## Install packages (if needed)
+# Install packages (if needed)
 # install.packages("tidyverse")
-# install.packages("Distance")
-# install.packages("spAbundance")
 
 # Load library
 library(tidyverse)
-library(Distance)
 
 # Set seed, scientific notation options, and working directory
 set.seed(123)
@@ -74,7 +71,7 @@ print(All_DS_est)
 # -------------------------------
 
 # Combining all Helicopter HDS estimates
-All_Heli_HDS <- rbind(F23_Heli_HDS_est, W24_Heli_HDS_est, F24_Heli_HDS_est)
+All_Heli_HDS <- rbind(F23_Heli_HDS_est, W24_Heli_HDS_est, F24_Heli_HDS_est, W25_Heli_HDS_est)
 
 # Take a look
 print(All_Heli_HDS)
@@ -128,22 +125,29 @@ col_palette <- c("Heli CF" = "black",
 
 
 # Abundance Estimates Fall 2023 - Winter 2025
-ggplot(All_estimates, aes(x = Season_Model, y = N, color = Model)) +
-  geom_point(size = 4, shape = 16) +  
-  geom_errorbar(aes(ymin = LCI, ymax = UCI), width = 0.2) +   
-  theme_minimal() +
-  labs(title = "Fall 2023",
-       x = "Model",
-       y = "Estimate (N)") +
-  scale_color_manual(values = col_palette) +   
-  scale_y_continuous(limits = c(100, 900), breaks = seq(100, 900, by = 100)) +   
-  theme(
-    legend.position = "none", 
-    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),   
-    axis.text.y = element_text(size = 12),   
-    axis.title.x = element_text(size = 14, margin = margin(t = 10)), 
-    axis.title.y = element_text(size = 14, margin = margin(r = 10)),  
-    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),  
-    panel.grid = element_blank(),  
-    axis.ticks = element_line(size = 0.8)  
+abund_plot <- ggplot(All_estimates, aes(x = Season_Model, y = N, color = Model)) +
+                      geom_point(size = 4, shape = 16) +  
+                      geom_errorbar(aes(ymin = LCI, ymax = UCI), width = 0.2) +   
+                      theme_minimal() +
+                      labs(title = "",
+                           x = "Model",
+                           y = "Estimate (N)") +
+                      scale_color_manual(values = col_palette) +   
+                      scale_y_continuous(limits = c(100, 900), breaks = seq(100, 900, by = 100)) +   
+                      theme(
+                        legend.position = "none", 
+                        axis.text.x = element_text(size = 12, angle = 45, hjust = 1),   
+                        axis.text.y = element_text(size = 12),   
+                        axis.title.x = element_text(size = 14, margin = margin(t = 10)), 
+                        axis.title.y = element_text(size = 14, margin = margin(r = 10)),  
+                        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),  
+                        panel.grid = element_blank(),  
+                        axis.ticks = element_line(size = 0.8)  
 )
+
+# View
+print(abund_plot)
+
+
+# Export
+ggsave(plot = abund_plot, "./Figures/Abundance_Plots/Comparison_Abundance_Plot.jpeg", width = 10, height = 5, dpi = 300) 
