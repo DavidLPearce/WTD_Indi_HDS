@@ -157,7 +157,7 @@ conversion.factor <- convert_units("meter",    # Distance
 # Fit Model
 # ----------------------
 F23_fit1 <- ds(data = F23_dat, 
-               formula = ~ size + factor(replicate), # + scale(woody_AggInx) 
+               formula = ~ size, # + scale(woody_AggInx)  + factor(replicate)
                transect = "line",  
                key = "hn", 
                dht_group = FALSE, 
@@ -243,8 +243,8 @@ W24_DS_est <- data.frame(Model = "seg Heli DS",
 # Take a look
 print(W24_DS_est)                 
 
-# Export best model
-saveRDS(W24_DS_est, "./Model_Objects/W24_segHeli_DS_AbundEst.rds")
+# # Export best model
+# saveRDS(W24_DS_est, "./Model_Objects/W24_segHeli_DS_AbundEst.rds")
 
 
 # -------------------------------------------------------
