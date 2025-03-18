@@ -37,7 +37,6 @@ F23_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall
 W24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Winter2024.csv")
 F24_cams <- read.csv("./Data/Survey_Data/Camera_Data/Raw_Data/LaCopita_Cams_Fall2024.csv")
  
-
 # ------------------------------------------------------------------------------
 #
 #                                 Data Wrangling    
@@ -95,42 +94,87 @@ head(W24_cams, 5)
 head(F24_cams, 5)
 
 # -------------------------------------------------
-# Subset to White-tailed Deer  
-# -------------------------------------------------
-
-F23_wtd_cams <- F23_cams[which(F23_cams$common_name == "White-tailed Deer"),]
-W24_wtd_cams <- W24_cams[which(W24_cams$common_name == "White-tailed Deer"),]
-F24_wtd_cams <- F24_cams[which(F24_cams$common_name == "White-tailed Deer"),]
-
-# -------------------------------------------------
 # Extract site ID and site number  
 # -------------------------------------------------
 
 # Fall 2023
-F23_wtd_cams <- F23_wtd_cams %>%
+F23_cams <- F23_cams %>%
   mutate(
     site_id = str_extract(deployment_id, "Site\\d+"), # Extracts "SiteNumber"
     site_number = str_extract(deployment_id, "(?<=Site)\\d+")  # Extracts the number after "Site"
   )
 
 # Take a look
-head(F23_wtd_cams)
+head(F23_cams)
 
 # Other seasons
-W24_wtd_cams <- W24_wtd_cams %>%
+W24_cams <- W24_cams %>%
   mutate(
     site_id = str_extract(deployment_id, "Site\\d+"), 
     site_number = str_extract(deployment_id, "(?<=Site)\\d+")   
   )
-head(W24_wtd_cams)
+head(W24_cams)
 
-F24_wtd_cams <- F24_wtd_cams %>%
+F24_cams <- F24_cams %>%
   mutate(
     site_id = str_extract(deployment_id, "Site\\d+"), # Extracts "TX_Grassland_LaCopita"
     site_number = str_extract(deployment_id, "(?<=Site)\\d+")  # Extracts the number after "Site"
   )
-head(F24_wtd_cams)
+head(F24_cams)
 
+# -------------------------------------------------
+# Deployment dataframe  
+# -------------------------------------------------
+
+# Creating a df for camera deployments using the min and max survey date_times for each camera
+F23_deploy <- F23_cams %>%
+  group_by(site_number) %>%   
+  summarize(
+    min_time = min(start_time, na.rm = TRUE),
+    max_time = max(end_time, na.rm = TRUE)
+  ) %>%
+  ungroup()%>%
+  mutate(site_number = as.numeric(site_number)) %>%   
+  arrange(site_number)  
+
+head(F23_deploy)
+
+W24_deploy <- W24_cams %>%
+  group_by(site_number) %>%   
+  summarize(
+    min_time = min(start_time, na.rm = TRUE),
+    max_time = max(end_time, na.rm = TRUE)
+  ) %>%
+  ungroup()%>%
+  mutate(site_number = as.numeric(site_number)) %>%   
+  arrange(site_number)  
+
+head(W24_deploy)
+ 
+F24_deploy <- F24_cams %>%
+  group_by(site_number) %>%   
+  summarize(
+    min_time = min(start_time, na.rm = TRUE),
+    max_time = max(end_time, na.rm = TRUE)
+  ) %>%
+  ungroup()%>%
+  mutate(site_number = as.numeric(site_number)) %>%   
+  arrange(site_number)   
+
+head(F24_deploy)
+
+# Convert to dataframes
+F23_deploy <- as.data.frame(F23_deploy)
+W24_deploy <- as.data.frame(W24_deploy)
+F24_deploy <- as.data.frame(F24_deploy)
+
+# -------------------------------------------------
+# Subset to White-tailed Deer  
+# -------------------------------------------------
+
+F23_wtd_cams <- F23_cams[which(F23_cams$common_name == "White-tailed Deer"),]
+W24_wtd_cams <- W24_cams[which(W24_cams$common_name == "White-tailed Deer"),]
+F24_wtd_cams <- F24_cams[which(F24_cams$common_name == "White-tailed Deer"),]
 
 
 # -------------------------------------------------
@@ -164,27 +208,33 @@ F23_wtd_cams <- F23_wtd_cams %>%
   mutate(site_number = as.numeric(site_number)) %>%  # site_number as numeric  
   arrange(site_number, date, time)  # Order by site number, then date, then time
 
-# View the sorted dataframe
 head(F23_wtd_cams)
 
 # Other Seasons
 W24_wtd_cams <- W24_wtd_cams %>%
   mutate(site_number = as.numeric(site_number)) %>%  
   arrange(site_number, date, time)
+
 head(W24_wtd_cams)
 
 F24_wtd_cams <- F24_wtd_cams %>%
   mutate(site_number = as.numeric(site_number)) %>% 
-  arrange(site_number, date, time)  
+  arrange(site_number, date, time)
+
 head(F24_wtd_cams)
 
 # -------------------------------------------------
 # Export 
 # -------------------------------------------------
 
+# Export camera detection data
 saveRDS(F23_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2023.rds")
 saveRDS(W24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Winter2024.rds")
 saveRDS(F24_wtd_cams, "./Data/Survey_Data/Camera_Data/LaCopita_DeerCams_Fall2024.rds")
 
-# ----------------------------- End of Script -----------------------------
+# Export deployment data
+saveRDS(F23_deploy, "./Data/Survey_Data/Camera_Data/LaCopita_DeploymentData_Fall2023.rds")
+saveRDS(W24_deploy, "./Data/Survey_Data/Camera_Data/LaCopita_DeploymentData_Winter2024.rds")
+saveRDS(F24_deploy, "./Data/Survey_Data/Camera_Data/LaCopita_DeploymentData_Fall2024.rds")
 
+# ----------------------------- End of Script -----------------------------
