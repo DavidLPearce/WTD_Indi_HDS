@@ -139,7 +139,8 @@ head(F24_wtd_cams)
 
 # Columns to keep
 keep_columns <- c("site_id", "site_number", "date",  "month", 
-                  "day_of_year", "date_time", "time", "survey_start", "survey_end",
+                  "day_of_year", "date_time", "start_time", "end_time", 
+                  "time", "survey_start", "survey_end",
                   "common_name", "group_size", "age", "sex"   
 )
 
