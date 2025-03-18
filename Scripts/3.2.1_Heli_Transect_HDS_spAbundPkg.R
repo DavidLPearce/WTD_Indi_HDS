@@ -673,10 +673,6 @@ F23_abund_summary <- data.frame(Model = "Heli HDS",
 # Print Abundance Summary
 print(F23_abund_summary)
 
-# Export abundance estimates
-saveRDS(F23_abund_summary, "./Model_Objects/F23_Heli_HDS_AbundEst.rds")
-
-
 # -------------------------------------------------------
 #                     Winter 2024
 # -------------------------------------------------------
@@ -772,10 +768,6 @@ W24_abund_summary <- data.frame(Model = "Heli HDS",
 # Print Abundance Summary
 print(W24_abund_summary)
 
-# Export abundance estimates
-saveRDS(W24_abund_summary, "./Model_Objects/W24_Heli_HDS_AbundEst.rds")
-
-
 # -------------------------------------------------------
 #                     Fall 2024
 # -------------------------------------------------------
@@ -870,10 +862,6 @@ F24_abund_summary <- data.frame(Model = "Heli HDS",
 
 # Print Abundance Summary
 print(F24_abund_summary)
-
-# Export abundance estimates
-saveRDS(F24_abund_summary, "./Model_Objects/F24_Heli_HDS_AbundEst.rds")
-
 
 # -------------------------------------------------------
 #                     Winter 2025
@@ -971,8 +959,16 @@ W25_abund_summary <- data.frame(Model = "Heli HDS",
 # Print Abundance Summary
 print(W25_abund_summary)
 
-# Export abundance estimates
-saveRDS(W25_abund_summary, "./Model_Objects/W25_Heli_HDS_AbundEst.rds")
+# -------------------------------------------------------
+# Combine Estimates for Exporting
+# -------------------------------------------------------
+
+# Combine all the estimates
+All_HDS <- rbind(F23_abund_summary, W24_abund_summary, F24_abund_summary, W25_abund_summary)
+print(All_HDS)
+
+# Export
+saveRDS(All_HDS, "./Model_Objects/Heli_HDS_AbundEst.rds")
 
 
 

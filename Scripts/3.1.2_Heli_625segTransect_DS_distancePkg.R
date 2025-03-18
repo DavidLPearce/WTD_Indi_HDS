@@ -197,12 +197,6 @@ F23_DS_est <- data.frame(Model = "Heli 625seg DS",
 # Take a look
 print(F23_DS_est)
 
-
-
-# Export best model
-saveRDS(F23_DS_est, "./Model_Objects/F23_625segHeli_DS_AbundEst.rds")
-
-
 # -------------------------------------------------------
 #                     Winter 2024
 # -------------------------------------------------------
@@ -246,10 +240,6 @@ W24_DS_est <- data.frame(Model = "Heli 625seg DS",
 
 # Take a look
 print(W24_DS_est)                 
-
-# Export best model
-saveRDS(W24_DS_est, "./Model_Objects/W24_625segHeli_DS_AbundEst.rds")
-
 
 # -------------------------------------------------------
 #                     Fall 2024
@@ -297,10 +287,6 @@ F24_DS_est <- data.frame(Model = "Heli 625seg DS",
 # Take a look
 print(F24_DS_est)                           
 
-# Export best model
-saveRDS(F24_DS_est, "./Model_Objects/F24_625segHeli_DS_AbundEst.rds")
-
-
 # -------------------------------------------------------
 #                     Winter 2025
 # -------------------------------------------------------
@@ -344,8 +330,16 @@ W25_DS_est <- data.frame(Model = "Heli 625seg DS",
 # Take a look
 print(W25_DS_est)                       
 
-# Export best model
-saveRDS(W25_DS_est, "./Model_Objects/W25_625segHeli_DS_AbundEst.rds")
+# -------------------------------------------------------
+# Combine Estimates for Exporting
+# -------------------------------------------------------
+
+# Combine all the estimates
+All_DS <- rbind(F23_DS_est, W24_DS_est, F24_DS_est, W25_DS_est)
+print(All_DS)
+
+# Export
+saveRDS(All_DS, "./Model_Objects/Heli_625segDS_AbundEst.rds")
 
 
 # ----------------------------- End of Script -----------------------------

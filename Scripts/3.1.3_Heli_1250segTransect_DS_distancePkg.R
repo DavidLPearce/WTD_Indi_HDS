@@ -183,9 +183,9 @@ F23_abund <-  dht2(ddf = F23_fit1$ddf,
 )
 
 # Organize into a dataframe
-F23_DS_est <- data.frame(Model = "Heli 625seg DS",
+F23_DS_est <- data.frame(Model = "Heli 1250seg DS",
                          Season = "Fall 2023",
-                         Season_Model = "F23 Heli 625seg DS",
+                         Season_Model = "F23 Heli 1250seg DS",
                          Data = "Helicopter",
                          N = F23_abund$Abundance[3],
                          LCI = F23_abund$LCI[3],
@@ -194,12 +194,6 @@ F23_DS_est <- data.frame(Model = "Heli 625seg DS",
 
 # Take a look
 print(F23_DS_est)
-
-
-
-# Export best model
-saveRDS(F23_DS_est, "./Model_Objects/F23_1250segHeli_DS_AbundEst.rds")
-
 
 # -------------------------------------------------------
 #                     Winter 2024
@@ -233,9 +227,9 @@ W24_abund <-  dht2(ddf = W24_fit1$ddf,
 )
 
 # Organize into a dataframe
-W24_DS_est <- data.frame(Model = "Heli 625seg DS",
+W24_DS_est <- data.frame(Model = "Heli 1250seg DS",
                          Season = "Winter 2024",
-                         Season_Model = "W24 Heli 625seg DS",
+                         Season_Model = "W24 Heli 1250seg DS",
                          Data = "Helicopter",
                          N = W24_abund$Abundance[3],
                          LCI = W24_abund$LCI[3],
@@ -244,10 +238,6 @@ W24_DS_est <- data.frame(Model = "Heli 625seg DS",
 
 # Take a look
 print(W24_DS_est)                 
-
-# Export best model
-saveRDS(W24_DS_est, "./Model_Objects/W24_1250segHeli_DS_AbundEst.rds")
-
 
 # -------------------------------------------------------
 #                     Fall 2024
@@ -283,9 +273,9 @@ F24_abund <-  dht2(ddf = F24_fit1$ddf,
 
 
 # Organize into a dataframe
-F24_DS_est <- data.frame(Model = "Heli 625seg DS",
+F24_DS_est <- data.frame(Model = "Heli 1250seg DS",
                          Season = "Fall 2024",
-                         Season_Model = "F24 Heli 625seg DS",
+                         Season_Model = "F24 Heli 1250seg DS",
                          Data = "Helicopter",
                          N = F24_abund$Abundance[3],
                          LCI = F24_abund$LCI[3],
@@ -294,10 +284,6 @@ F24_DS_est <- data.frame(Model = "Heli 625seg DS",
 
 # Take a look
 print(F24_DS_est)                           
-
-# Export best model
-saveRDS(F24_DS_est, "./Model_Objects/F24_1250segHeli_DS_AbundEst.rds")
-
 
 # -------------------------------------------------------
 #                     Winter 2025
@@ -330,9 +316,9 @@ W25_abund <-  dht2(ddf = W25_fit1$ddf,
 )
 
 # Organize into a dataframe
-W25_DS_est <- data.frame(Model = "Heli 625seg DS",
+W25_DS_est <- data.frame(Model = "Heli 1250seg DS",
                          Season = "Winter 2025",
-                         Season_Model = "W25 Heli 625seg DS",
+                         Season_Model = "W25 Heli 1250seg DS",
                          Data = "Helicopter",
                          N = W25_abund$Abundance[3],
                          LCI = W25_abund$LCI[3],
@@ -340,10 +326,18 @@ W25_DS_est <- data.frame(Model = "Heli 625seg DS",
 )
 
 # Take a look
-print(W25_DS_est)                       
+print(W25_DS_est)   
 
-# Export best model
-saveRDS(W25_DS_est, "./Model_Objects/W25_1250segHeli_DS_AbundEst.rds")
+# -------------------------------------------------------
+# Combine Estimates for Exporting
+# -------------------------------------------------------
+
+# Combine all the estimates
+All_DS <- rbind(F23_DS_est, W24_DS_est, F24_DS_est, W25_DS_est)
+print(All_DS)
+
+# Export
+saveRDS(All_DS, "./Model_Objects/Heli_1250segDS_AbundEst.rds")
 
 
 # ----------------------------- End of Script -----------------------------
