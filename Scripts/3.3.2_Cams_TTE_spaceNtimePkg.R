@@ -93,21 +93,55 @@ areat_hectare = area_m2 * 0.0001
 
 # Adding area measure
 F23_deploy$area <- area_acre
+W24_deploy$area <- area_acre
+F24_deploy$area <- area_acre
+
+# Renaming 
+colnames(F23_deploy)[1] <- "cam" # Fall 2023
+colnames(F23_deploy)[2] <- "start"
+colnames(F23_deploy)[3] <- "end"
+colnames(F23_deploy)[4] <- "area"
+
+colnames(W24_deploy)[1] <- "cam" # Winter 2024
+colnames(W24_deploy)[2] <- "start"
+colnames(W24_deploy)[3] <- "end"
+colnames(W24_deploy)[4] <- "area"
+
+colnames(F24_deploy)[1] <- "cam" # Fall 2024
+colnames(F24_deploy)[2] <- "start"
+colnames(F24_deploy)[3] <- "end"
+colnames(F24_deploy)[4] <- "area"
+
+# Change sample start and end dates
+# Note if a camera failed you would add a rows for when the 
+# camera was operating
+# All cameras ran the entire survey period. 
+F23_start <-  as.POSIXct("2023-09-10 00:00:00", tz = "UTC") 
+F23_end <- as.POSIXct("2023-10-10 23:59:59", tz = "UTC") 
+
+W24_start <- as.POSIXct("2024-02-15 00:00:00", tz = "UTC") 
+W24_end <- as.POSIXct("2024-03-15 23:59:59", tz = "UTC") 
+
+F24_start <- as.POSIXct("2024-09-08 00:00:00", tz = "UTC") 
+F24_end <- as.POSIXct("2024-10-08 23:59:59", tz = "UTC") 
+
+F23_deploy$start <- F23_start
+F23_deploy$end <- F23_end
 
 # Take a look
 print(F23_deploy)
-
-# View shed width
-theta_rad <- theta * (pi / 180)
-viewshed_width <- 2 * r * sin(theta_rad / 2)
-print(viewshed_width)
+print(W24_deploy)
+print(F24_deploy)
 
 # ----------------------
 # Sample Period Length
 # ----------------------
 
 # Deer move at about 275m/hr, given that the view shed was
+theta_rad <- theta * (pi / 180)
+viewshed_width <- 2 * r * sin(theta_rad / 2)
 print(viewshed_width)
+
 # meters wide it would take a deer to cross the view shed about...
 speed <- 275 # m/hr
 speed_sec <- speed / 3600  # m/sec
@@ -118,7 +152,7 @@ print(time_min)
 
 # 85 seconds or 1.4 mins
 # so sampling periods should be around there
-WTD_per <- time_min
+WTD_per <- time_sec
   
 # -------------------------------------------------------
 # Survey Data
@@ -126,112 +160,100 @@ WTD_per <- time_min
 
 colnames(F23_wtd_cams)
 
-# Filter cam data to siteID, date_time, and count
-F23_dat <- F23_wtd_cams[,c(2, 6, 13)]
-head(F23_dat, 5)
+# Subset camera cam data to siteID, date_time, and count
+F23_df <- F23_wtd_cams[,c(2, 6, 13)]
+W24_df <- W24_wtd_cams[,c(2, 6, 13)]
+F24_df <- F24_wtd_cams[,c(2, 6, 13)]
 
-# ------------------------------- 
+# Renaming 
+colnames(F23_df)[1] <- "cam"
+colnames(F23_df)[2] <- "datetime"
+colnames(F23_df)[3] <- "count"
 
- 
-library(dplyr)
-library(lubridate)
-library(tidyr)
+colnames(W24_df)[1] <- "cam"
+colnames(W24_df)[2] <- "datetime"
+colnames(W24_df)[3] <- "count"
 
-# Define date range
-F23_start <- as.Date("2023-09-10")
-F23_end <- as.Date("2023-10-10")
+colnames(F24_df)[1] <- "cam"
+colnames(F24_df)[2] <- "datetime"
+colnames(F24_df)[3] <- "count"
 
-# Convert date_time to POSIXct if not already
-F23_dat <- F23_dat %>%
-  mutate(date_time = as.POSIXct(date_time))
+# Subset camera data to be between start and end
+F23_df <- F23_df[which(F23_df$datetime >= F23_start & F23_df$datetime <= F23_end),]
+W24_df <- W24_df[which(W24_df$datetime >= W24_start & W24_df$datetime <= W24_end),]
+F24_df <- F24_df[which(F24_df$datetime >= F24_start & F24_df$datetime <= F24_end),]
 
-# Create a full site-date-period grid (only Period 1 & 2)
-F23_grid <- expand.grid(
-  site_number = unique(F23_dat$site_number),  # Get all sites
-  date = seq.Date(F23_start, F23_end, by = "day"),  # All days in range
-  period = c(1, 2)  # Only Period 1 (AM) and Period 2 (PM)
-)
+# Take a look
+head(F23_df, 5)
+head(W24_df, 5)
+head(F24_df, 5)
 
-# Process detections (Only Period 1 & 2)
-F23_sampling <- F23_dat %>%
-  mutate(
-    date = as.Date(date_time),  # Extract date
-    hour = hour(date_time),     # Extract hour
-    minute = minute(date_time), # Extract minutes
-    period = case_when(  # Assign only Period 1 & 2
-      hour == 7 & minute >= 30 | hour == 8 & minute < 30 ~ 1,  # 07:30-08:30 AM
-      hour == 19 & minute >= 30 | hour == 20 & minute < 30 ~ 2, # 07:30-08:30 PM
-      TRUE ~ NA_real_  # Remove anything outside the defined periods
-    )
-  ) %>%
-  filter(!is.na(period)) %>%  # Keep only observations within defined periods
-  group_by(site_number, date, period) %>%  # Group by site, date, and period
-  slice_min(date_time, with_ties = FALSE) %>%  # Keep only first detection
-  summarize(
-    count = sum(group_size, na.rm = TRUE),  # Count from first detection only
-    datetime = first(date_time),  # Store first detection datetime
-    .groups = "drop"
-  ) %>%
-  mutate(date = as.Date(date))  # Ensure date is Date type
-
-# Merge with full site-date-period grid to ensure all site-date-periods exist
-F23_final <- F23_grid %>%
-  left_join(F23_sampling, by = c("site_number", "date", "period")) %>%
-  mutate(
-    count = ifelse(is.na(count), 0, count),  # Fill missing counts with 0
-    datetime = case_when(
-      !is.na(datetime) ~ datetime,  # Keep actual first detection time
-      period == 1 ~ as.POSIXct(paste(date, "07:30:00"), tz = "UTC"),  # Fill missing with start time for Period 1
-      period == 2 ~ as.POSIXct(paste(date, "19:30:00"), tz = "UTC")   # Fill missing with start time for Period 2
-    ),
-    Occasion = as.integer(date - F23_start + 1)  # Convert date to integer occasion
-  ) %>%
-  select(site_number, Occasion, Period = period, Count = count, datetime)  # Final column order
-
-# Order by site and datetime
-F23_final <- F23_final %>%
-  arrange(site_number, datetime)
-
-# View results
-head(F23_final)
-
-max(F23_final$Count)
-
-
+# Survey dates
+F23_survey_dates <- c(F23_start, F23_end)
+W24_survey_dates <- c(W24_start, W24_end)
+F24_survey_dates <- c(F24_start, F24_end)
 
 
 # -------------------------------------------------------
 # Sampling Occasion
 # ------------------------------------------------------- 
 
-# Once you have defined the length of your sampling period, you can build your sampling occasions. This can
-# be done manually or with the function tte_build_occ(). The sampling occasions will be in a data.frame or tibble
-# with the following structure:
-
-WTD_study_dates <- as.POSIXct(c("2023-09-10 00:00:00", "2023-10-10 23:59:59"), tz = "GMT")
-
-# -------------------------------------------------------
-# Sampling Occasion
-# ------------------------------------------------------- 
-
+# Create TTE occasions
 F23_occ <- tte_build_occ(
-  per_length = 30,
-  nper = 2,
-  time_btw = 11.5 * 3600,
-  study_start = WTD_study_dates[1],
-  study_end = WTD_study_dates[2]
+  per_length = WTD_per, # period length
+  nper = 6,             # Number of periods
+  time_btw = 4 * 3600,  # Time between periods in seconds
+  study_start = F23_survey_dates[1],
+  study_end = F23_survey_dates[2]
 )
+
+W24_occ <- tte_build_occ(
+  per_length = WTD_per, # period length
+  nper = 6,             # Number of periods
+  time_btw = 4 * 3600,  # Time between periods in seconds
+  study_start = W24_survey_dates[1],
+  study_end = W24_survey_dates[2]
+)
+
+F24_occ <- tte_build_occ(
+  per_length = WTD_per, # period length
+  nper = 6,             # Number of periods
+  time_btw = 4 * 3600,  # Time between periods in seconds
+  study_start = F24_survey_dates[1],
+  study_end = F24_survey_dates[2]
+)
+
+
+
+# Take a look
+head(F23_occ, 5)
+head(W24_occ, 5)
+head(F24_occ, 5)
 
 # -------------------------------------------------------
 # Encounter Histories
 # ------------------------------------------------------- 
-F23_tte_eh <- tte_build_eh(F23_final, 
+
+# Creating encounter histories
+F23_tte_eh <- tte_build_eh(F23_df, 
                            F23_deploy, 
                            F23_occ, 
                            WTD_per)
-head(F23_tte_eh)
 
+W24_tte_eh <- tte_build_eh(W24_df, 
+                           W24_deploy, 
+                           W24_occ, 
+                           WTD_per)
 
+F24_tte_eh <- tte_build_eh(F24_df, 
+                           F24_deploy, 
+                           F24_occ, 
+                           WTD_per)
+
+# Take a look
+head(F23_tte_eh, 5)
+head(W24_tte_eh, 5)
+head(F24_tte_eh, 5)
 
 
 # ------------------------------------------------------------------------------
@@ -239,3 +261,59 @@ head(F23_tte_eh)
 #                           Time to Event Models
 #
 # ------------------------------------------------------------------------------
+
+
+# Estimate abundance
+F23_TTE <- tte_estN_fn(F23_tte_eh, study_area = 2710)
+W24_TTE <- tte_estN_fn(W24_tte_eh, study_area = 2710)
+F24_TTE <- tte_estN_fn(F24_tte_eh, study_area = 2710)
+
+# Take a look
+print(F23_TTE)
+print(W24_TTE)
+print(F24_TTE)
+
+
+# -------------------------------------------------------
+# Formatting Estimates for Exporting
+# ------------------------------------------------------- 
+
+F23_TTE_est <- data.frame(Model = "Cam TTE",
+                         Season = "Fall 2023",
+                         Season_Model = "F23 Cam TTE",
+                         Data = "Camera",
+                         N = F23_TTE$N,
+                         LCI = F23_TTE$LCI,
+                         UCI = F23_TTE$UCI
+)
+
+
+W24_TTE_est <- data.frame(Model = "Cam TTE",
+                          Season = "Winter 2024",
+                          Season_Model = "W24 Cam TTE",
+                          Data = "Camera",
+                          N = W24_TTE$N,
+                          LCI = W24_TTE$LCI,
+                          UCI = W24_TTE$UCI
+)
+
+F24_TTE_est <- data.frame(Model = "Cam TTE",
+                          Season = "Fall 2024",
+                          Season_Model = "F24 Cam TTE",
+                          Data = "Camera",
+                          N = F24_TTE$N,
+                          LCI = F24_TTE$LCI,
+                          UCI = F24_TTE$UCI
+)
+
+
+# Combine all the estimates
+All_TTE <- rbind(F23_TTE_est, W24_TTE_est , F24_TTE_est)
+print(All_TTE)
+
+# Export l
+saveRDS(All_TTE, "./Model_Objects/Cam_TTE_AbundEst.rds")
+
+
+
+# ----------------------------- End of Script -----------------------------
