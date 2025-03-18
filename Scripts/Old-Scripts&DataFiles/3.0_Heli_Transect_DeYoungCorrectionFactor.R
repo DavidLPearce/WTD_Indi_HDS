@@ -88,3 +88,16 @@ heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Formatted_Heli_Transect
 # 
 # # Take a look
 # print(All_Cnts)
+
+# -------------------------------------------------------
+# Formatting Estimates for Exporting
+# ------------------------------------------------------- 
+# 
+# # Combine all the estimates
+# All_TTE <- rbind(F23_TTE_est, W24_TTE_est , F24_TTE_est)
+# print(All_TTE)
+# 
+# # Export
+# saveRDS(All_TTE, "./Model_Objects/Cam_TTE_AbundEst.rds")
+
+# ----------------------------- End of Script -----------------------------
