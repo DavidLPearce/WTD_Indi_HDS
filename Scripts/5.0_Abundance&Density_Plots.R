@@ -30,59 +30,17 @@ setwd(".")
 # ------------------------------------------------------------------------------
 
 # DS Estimates 
-F23_Heli_DS_est <- readRDS("./Model_Objects/F23_Heli_DS_AbundEst.rds") # Helicopter DS
-F23_Heli_625segDS_est <- readRDS("./Model_Objects/F23_625segHeli_DS_AbundEst.rds")
-F23_Heli_1250segDS_est <- readRDS("./Model_Objects/F23_1250segHeli_DS_AbundEst.rds")
-F23_Heli_HDS_est <- readRDS("./Model_Objects/F23_Heli_HDS_AbundEst.rds") # Helicopter HDS
-F23_Heli_625segHDS_est <- readRDS("./Model_Objects/F23_625segHeli_HDS_AbundEst.rds") 
-F23_Heli_1250segHDS_est <- readRDS("./Model_Objects/F23_1250segHeli_HDS_AbundEst.rds")
-
-#F23_Cam_Nmix_est <- readRDS("./Model_Objects/F23_Cam_Nmix_AbundEst.rds") # Camera
+Heli_DS_est <- readRDS("./Model_Objects/Heli_DS_AbundEst.rds")
+Heli_1250segDS_est <- readRDS("./Model_Objects/Heli_1250segDS_AbundEst.rds")
+Heli_625segDS_est <- readRDS("./Model_Objects/Heli_625segDS_AbundEst.rds")
 
 # HDS Estimates
-W24_Heli_DS_est <- readRDS("./Model_Objects/W24_Heli_DS_AbundEst.rds") # Helicopter DS
-W24_Heli_1250segDS_est <- readRDS("./Model_Objects/W24_1250segHeli_DS_AbundEst.rds") 
-W24_Heli_625segDS_est <- readRDS("./Model_Objects/W24_625segHeli_DS_AbundEst.rds")
-W24_Heli_HDS_est <- readRDS("./Model_Objects/W24_Heli_HDS_AbundEst.rds") # Helicopter HDS
-W24_Heli_625segHDS_est <- readRDS("./Model_Objects/W24_625segHeli_HDS_AbundEst.rds")
-W24_Heli_1250segHDS_est <- readRDS("./Model_Objects/W24_1250segHeli_HDS_AbundEst.rds")
-#W24_Cam_TTE_est <- readRDS("./Model_Objects/W24_Cam_Nmix_AbundEst.rds") # Camera
+Heli_HDS_est <- readRDS("./Model_Objects/Heli_HDS_AbundEst.rds")
+Heli_1250segHDS_est <- readRDS("./Model_Objects/W25_1250segHeli_HDS_AbundEst.rds")
+Heli_625segHDS_est <- readRDS("./Model_Objects/Heli_625segHDS_AbundEst.rds")
 
-# Cam Estimates 
-F24_Heli_DS_est <- readRDS("./Model_Objects/F24_Heli_DS_AbundEst.rds") # Helicopter DS
-F24_Heli_1250segDS_est <- readRDS("./Model_Objects/F24_1250segHeli_DS_AbundEst.rds")
-F24_Heli_625segDS_est <- readRDS("./Model_Objects/F24_625segHeli_DS_AbundEst.rds")
-F24_Heli_HDS_est <- readRDS("./Model_Objects/F24_Heli_HDS_AbundEst.rds")
-F24_Heli_625segHDS_est <- readRDS("./Model_Objects/F24_625segHeli_HDS_AbundEst.rds")
-F24_Heli_1250segHDS_est <- readRDS("./Model_Objects/F24_1250segHeli_HDS_AbundEst.rds")
-#F24_Cam_TTE_est <- readRDS("./Model_Objects/F24_Cam_Nmix_AbundEst.rds") # Camera
-
-
-# Winter 2025 Estimates
-W25_Heli_DS_est <- readRDS("./Model_Objects/W25_Heli_DS_AbundEst.rds") # Helicopter DS
-W25_Heli_1250segDS_est <- readRDS("./Model_Objects/W25_1250segHeli_DS_AbundEst.rds")
-W25_Heli_625segDS_est <- readRDS("./Model_Objects/W25_625segHeli_DS_AbundEst.rds")
-W25_Heli_HDS_est <- readRDS("./Model_Objects/W25_Heli_HDS_AbundEst.rds") # Helicopter HDS
-W25_Heli_625segHDS_est <- readRDS("./Model_Objects/W25_625segHeli_HDS_AbundEst.rds")
-W25_Heli_1250segHDS_est <- readRDS("./Model_Objects/W25_1250segHeli_HDS_AbundEst.rds")
-# W25_Cam_Nmix <- readRDS() # Camera
-
-# Cam Estimates
+# Camera Estimates
 Cam_TTE_est <- readRDS("./Model_Objects/Cam_TTE_AbundEst.rds")
-
-# Renaming model this will need deleted  *********************************
-F23_Heli_625segHDS_est$Model <- "Heli 625seg HDS"
-W24_Heli_625segHDS_est$Model <- "Heli 625seg HDS"
-F24_Heli_625segHDS_est$Model <- "Heli 625seg HDS"
-W25_Heli_625segHDS_est$Model <- "Heli 625seg HDS"
-
-F23_Heli_1250segHDS_est$Model <- "Heli 1250seg HDS"
-W24_Heli_1250segHDS_est$Model <- "Heli 1250seg HDS"
-F24_Heli_1250segHDS_est$Model <- "Heli 1250seg HDS"
-W25_Heli_1250segHDS_est$Model <- "Heli 1250seg HDS"
-
-W25_Heli_625segHDS_est$Season <- "Winter 2025"
-W25_Heli_1250segHDS_est$Season <- "Winter 2025"
 
 # ------------------------------------------------------------------------------
 #
@@ -90,94 +48,33 @@ W25_Heli_1250segHDS_est$Season <- "Winter 2025"
 #
 # ------------------------------------------------------------------------------
 
-# -------------------------------
-# Organizing DS Estimates 
-# -------------------------------
-
-# Combine all estimates
-All_DS_est <- rbind(F23_Heli_DS_est, W24_Heli_DS_est, F24_Heli_DS_est, W25_Heli_DS_est)
-
-# Take a look
-print(All_DS_est)
-
-# -------------------------------
-# Organizing 1250segT DS Estimates 
-# -------------------------------
-
-# Combine all estimates
-All_1250segDS_est <- rbind(F23_Heli_1250segDS_est, W24_Heli_1250segDS_est, F24_Heli_1250segDS_est, W25_Heli_1250segDS_est)
-
-# Take a look
-print(All_1250segDS_est)
-
-# -------------------------------
-# Organizing 625segT DS Estimates 
-# -------------------------------
-
-# Combine all estimates
-All_625segDS_est <- rbind(F23_Heli_625segDS_est, W24_Heli_625segDS_est, F24_Heli_625segDS_est, W25_Heli_625segDS_est)
-
-# Take a look
-print(All_625segDS_est)
-
-
-# -------------------------------
-# Organizing HDS Estimates 
-# -------------------------------
-
-# Combining all Helicopter HDS estimates
-All_Heli_HDS <- rbind(F23_Heli_HDS_est, W24_Heli_HDS_est, F24_Heli_HDS_est, W25_Heli_HDS_est)
-
-# Take a look
-print(All_Heli_HDS)
-
-# -------------------------------
-# Organizing 1250segT HDS Estimates 
-# -------------------------------
-
-# Combine all estimates
-All_1250segHDS_est <- rbind(F23_Heli_1250segHDS_est, W24_Heli_1250segHDS_est, F24_Heli_1250segHDS_est, W25_Heli_1250segHDS_est)
-
-# Take a look
-print(All_1250segHDS_est)
-
-# -------------------------------
-# Organizing 625segT HDS Estimates 
-# -------------------------------
-
-# Combine all estimates
-All_625segHDS_est <- rbind(F23_Heli_625segHDS_est, W24_Heli_625segHDS_est, F24_Heli_625segHDS_est, W25_Heli_625segHDS_est)
-
-# Take a look
-print(All_625segHDS_est)
-
 
 # -------------------------------
 # Combine Across Surveys and models
 # -------------------------------
 
 # Combine all helicopter models
-all_est <- rbind(All_DS_est, 
-                  All_1250segDS_est, 
-                  All_625segDS_est, 
-                  All_Heli_HDS, 
-                  All_1250segHDS_est, 
-                  All_625segHDS_est,
+all_est <- rbind(Heli_DS_est, 
+                 Heli_1250segDS_est, 
+                 Heli_625segDS_est, 
+                 Heli_HDS_est, 
+                 Heli_1250segHDS_est, 
+                 Heli_625segHDS_est,
                   Cam_TTE_est)
 
-# Factor by models
-all_est <- all_est %>%
-  mutate(Model = factor(Model,
-                        levels = c(
-                         "Heli DS",
-                         "1250seg Heli DS",
-                         "625seg Heli DS",
-                         "Heli HDS",
-                         "Heli 1250seg HDS",
-                         "Heli 625seg HDS",
-                         "Cam TTE"
-                       ))
-  )
+# # Factor by models **** see levels all_est$Model
+# all_est <- all_est %>%
+#   mutate(Model = factor(Model,
+#                         levels = c(
+#                          "Heli DS",
+#                          "1250seg Heli DS",
+#                          "625seg Heli DS",
+#                          "Heli HDS",
+#                          "Heli 1250seg HDS",
+#                          "Heli 625seg HDS",
+#                          "Cam TTE"
+#                        ))
+#   )
 
 # Subset by season
 F23_est <- all_est[which(all_est$Season == "Fall 2023"),]
