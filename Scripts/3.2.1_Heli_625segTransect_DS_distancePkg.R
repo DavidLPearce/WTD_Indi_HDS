@@ -35,13 +35,13 @@ setwd(".")
 # ------------------------------------------------------------------------------
 
 # Load survey data
-heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Formatted_Heli_1250segTransect_Data.csv", row.names = 1)
+heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Formatted_Heli_625segTransect_Data.csv", row.names = 1)
 
 # Take a look at the data
 head(heli_dat, 5)
 
 # Load site covariates data
-site_covs <- read.csv("./Data/Survey_Data/Helicopter_Data/Heli_1250segTransect_siteCovs.csv", row.names = 1)
+site_covs <- read.csv("./Data/Survey_Data/Helicopter_Data/Heli_625segTransect_siteCovs.csv", row.names = 1)
 
 # Take a look at the data
 head(site_covs, 5)
@@ -63,6 +63,8 @@ names(heli_dat)[3] <- "segID"
 # Match with site covs
 heli_dat <- merge(x = heli_dat, y = site_covs,  by ="segID")
 
+# Take a look
+head(heli_dat, 5)
 
 # ----------------------
 # Naming Scheme
@@ -198,7 +200,7 @@ print(F23_DS_est)
 
 
 # Export best model
-saveRDS(F23_DS_est, "./Model_Objects/F23_1250segHeli_DS_AbundEst.rds")
+saveRDS(F23_DS_est, "./Model_Objects/F23_625segHeli_DS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -246,7 +248,7 @@ W24_DS_est <- data.frame(Model = "Heli 625seg DS",
 print(W24_DS_est)                 
 
 # Export best model
-saveRDS(W24_DS_est, "./Model_Objects/W24_1250segHeli_DS_AbundEst.rds")
+saveRDS(W24_DS_est, "./Model_Objects/W24_625segHeli_DS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -296,7 +298,7 @@ F24_DS_est <- data.frame(Model = "Heli 625seg DS",
 print(F24_DS_est)                           
 
 # Export best model
-saveRDS(F24_DS_est, "./Model_Objects/F24_1250segHeli_DS_AbundEst.rds")
+saveRDS(F24_DS_est, "./Model_Objects/F24_625segHeli_DS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -306,7 +308,7 @@ saveRDS(F24_DS_est, "./Model_Objects/F24_1250segHeli_DS_AbundEst.rds")
 
 # Group size
 W25_fit1 <- ds(data = W25_dat, 
-               formula = ~ size + factor(replicate) + scale(woody_AggInx), 
+               formula = ~ size + factor(replicate) + scale(woody_AggInx),  
                transect = "line",  
                key = "hn", 
                dht_group = FALSE, 
@@ -332,7 +334,7 @@ W25_abund <-  dht2(ddf = W25_fit1$ddf,
 # Organize into a dataframe
 W25_DS_est <- data.frame(Model = "Heli 625seg DS",
                          Season = "Winter 2025",
-                         Season_Model = "W25 Heli 625seg DS",
+                         Season_Model = "W25  Heli 625seg DS",
                          Data = "Helicopter",
                          N = W25_abund$Abundance[3],
                          LCI = W25_abund$LCI[3],
@@ -343,7 +345,7 @@ W25_DS_est <- data.frame(Model = "Heli 625seg DS",
 print(W25_DS_est)                       
 
 # Export best model
-saveRDS(W25_DS_est, "./Model_Objects/W25_1250segHeli_DS_AbundEst.rds")
+saveRDS(W25_DS_est, "./Model_Objects/W25_625segHeli_DS_AbundEst.rds")
 
 
 # ----------------------------- End of Script -----------------------------

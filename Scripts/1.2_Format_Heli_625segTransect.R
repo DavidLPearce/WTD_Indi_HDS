@@ -270,15 +270,12 @@ heli_dat_clean$Males <- rowSums(heli_dat_clean[,c(9:12)])
 # ----------------------
 # 625m
 # ----------------------
-
-# 625m should be a decent trade off with number of transects and landscape heterogeneity
-
 # Function to round to the nearest multiple of 625 m (0.625 km)
 round_625m <- function(x) {
   round(x / 625) * 625
 }
 
-# Data: Transect lengths (replace T_Length with your column name)
+# Applying Function
 transects <- transects %>%
   mutate(Rnded_Lgth = round_625m(T_Length),  # Round length to nearest 625m
          Nsegs = Rnded_Lgth / 625)  # Calculate number of 625m segments
@@ -435,7 +432,7 @@ ggplot(segmented_transects) +
 # Saving helicopter data as CSV
 write.csv(heli_dat_clean, "./Data/Survey_Data/Helicopter_Data/Formatted_Heli_625segTransect_Data.csv")
 
-# Saving segmented transects
-st_write(segmented_transects, append = TRUE, "./Data/Spatial_Data/Helicopter_Transects/Helicopter_625SegmentedTransects.shp")
+# Saving segmented transects (append = FALSE means replace)
+st_write(segmented_transects, append = FALSE, "./Data/Spatial_Data/Helicopter_Transects/Helicopter_625SegmentedTransects.shp")
 
 # ----------------------------- End of Script -----------------------------

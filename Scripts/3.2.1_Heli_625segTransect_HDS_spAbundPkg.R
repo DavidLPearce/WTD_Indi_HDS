@@ -42,19 +42,19 @@ setwd(".")
 # ------------------------------------------------------------------------------
 
 # Load survey data
-heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Formatted_Heli_1250segTransect_Data.csv", row.names = 1)
+heli_dat <- read.csv("./Data/Survey_Data/Helicopter_Data/Formatted_Heli_625segTransect_Data.csv", row.names = 1)
 
 # Take a look at the data
 head(heli_dat, 5)
 
 # Load site covariates data
-site_covs <- read.csv("./Data/Survey_Data/Helicopter_Data/Heli_1250segTransect_siteCovs.csv", row.names = 1)
+site_covs <- read.csv("./Data/Survey_Data/Helicopter_Data/Heli_625segTransect_siteCovs.csv", row.names = 1)
 
 # Take a look at the data
 head(site_covs, 5)
 
 # Read in transects
-transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_1250SegmentedTransects.shp")
+transects <- st_read("./Data/Spatial_Data/Helicopter_Transects/Helicopter_625SegmentedTransects.shp")
 
 # Take a look at the data
 head(transects, 5)
@@ -171,7 +171,7 @@ win24_dat$Distance_Bins <- as.character(win24_dat$Distance_Bins)
 fall24_dat$Distance_Bins <- as.character(fall24_dat$Distance_Bins)
 win25_dat$Distance_Bins <- as.character(win25_dat$Distance_Bins)
 
-# Initializing a matrix for 12 transects x 2 surveys and 4 distance bins for each survey
+# Initializing a matrix for 68 transects x 2 surveys and 4 distance bins for each survey
 fall23_mat <- matrix(0, nrow = (NROW(site_covs) * 2), ncol = 4)
 win24_mat <- matrix(0, nrow = (NROW(site_covs) * 2), ncol = 4)
 fall24_mat <- matrix(0, nrow = (NROW(site_covs) * 2), ncol = 4)
@@ -572,7 +572,7 @@ F23_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F23_fm1 <- spDS(abund.formula = ~ 1,  
+F23_fm1 <- spDS(abund.formula = ~ as.factor(woody_lrgPInx),  
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = F23_spA_dat,
                 family = 'Poisson',
@@ -637,10 +637,10 @@ F23_dens_vec <-  (F23_all_site_ests / (sum(transect_effort$Area_ac)))
 F23_abund_vec <- F23_dens_vec * 2710
 
 # Compute summary statistics
-F23_abund_summary <- data.frame(Model = "Heli 1250seg HDS", 
-                                Season = "Fall 2023",
+F23_abund_summary <- data.frame(Model = "Heli 625seg HDS", 
+                                Season = "Fall 625seg 2023",
                                 Data = "Helicopter",
-                                Season_Model = "F23 Heli 1250seg HDS",
+                                Season_Model = "F23 Heli 625seg HDS",
                                 N = mean(F23_abund_vec, na.rm = TRUE),  
                                 LCI = as.numeric(quantile(F23_abund_vec, probs = 0.025, na.rm = TRUE)), 
                                 UCI = as.numeric(quantile(F23_abund_vec, probs = 0.975, na.rm = TRUE)) 
@@ -650,7 +650,7 @@ F23_abund_summary <- data.frame(Model = "Heli 1250seg HDS",
 print(F23_abund_summary)
 
 # Export abundance estimates
-saveRDS(F23_abund_summary, "./Model_Objects/F23_1250segHeli_HDS_AbundEst.rds")
+saveRDS(F23_abund_summary, "./Model_Objects/F23_625segHeli_HDS_AbundEst.rds")
 
 # -------------------------------------------------------
 #                     Winter 2024
@@ -670,7 +670,7 @@ W24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W24_fm1 <- spDS(abund.formula = ~ 1,  
+W24_fm1 <- spDS(abund.formula = ~ as.factor(woody_lrgPInx),      
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = W24_spA_dat,
                 family = 'Poisson',
@@ -735,10 +735,10 @@ W24_dens_vec <-  (W24_all_site_ests / (sum(transect_effort$Area_ac)))
 W24_abund_vec <- W24_dens_vec * 2710
 
 # Compute summary statistics
-W24_abund_summary <- data.frame(Model = "Heli 1250seg HDS",
+W24_abund_summary <- data.frame(Model = "Heli 625seg HDS", 
                                 Season = "Winter 2024",
                                 Data = "Helicopter",
-                                Season_Model = "W24 Heli 1250seg HDS",
+                                Season_Model = "W24 Heli 625seg HDS",
                                 N = mean(W24_abund_vec, na.rm = TRUE),  
                                 LCI = as.numeric(quantile(W24_abund_vec, probs = 0.025, na.rm = TRUE)), 
                                 UCI = as.numeric(quantile(W24_abund_vec, probs = 0.975, na.rm = TRUE)) 
@@ -748,7 +748,7 @@ W24_abund_summary <- data.frame(Model = "Heli 1250seg HDS",
 print(W24_abund_summary)
 
 # Export abundance estimates
-saveRDS(W24_abund_summary, "./Model_Objects/W24_1250segHeli_HDS_AbundEst.rds")
+saveRDS(W24_abund_summary, "./Model_Objects/W24_625segHeli_HDS_AbundEst.rds")
 
 
 # -------------------------------------------------------
@@ -769,7 +769,7 @@ F24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F24_fm1 <- spDS(abund.formula = ~ 1,  
+F24_fm1 <- spDS(abund.formula = ~ ~ as.factor(woody_lrgPInx),    
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = F24_spA_dat,
                 family = 'Poisson',
@@ -834,10 +834,10 @@ F24_dens_vec <-  (F24_all_site_ests / (sum(transect_effort$Area_ac)))
 F24_abund_vec <- F24_dens_vec * 2710
 
 # Compute summary statistics
-F24_abund_summary <- data.frame(Model = "Heli 1250seg HDS", 
+F24_abund_summary <- data.frame(Model = "Heli 625seg HDS", 
                                 Season = "Fall 2024",
                                 Data = "Helicopter",
-                                Season_Model = "F24 Heli 1250seg HDS",
+                                Season_Model = "F24 Heli 625seg HDS",
                                 N = mean(F24_abund_vec, na.rm = TRUE),  
                                 LCI = as.numeric(quantile(F24_abund_vec, probs = 0.025, na.rm = TRUE)), 
                                 UCI = as.numeric(quantile(F24_abund_vec, probs = 0.975, na.rm = TRUE)) 
@@ -847,7 +847,7 @@ F24_abund_summary <- data.frame(Model = "Heli 1250seg HDS",
 print(F24_abund_summary)
 
 # Export abundance estimates
-saveRDS(F24_abund_summary, "./Model_Objects/F24_1250segHeli_HDS_AbundEst.rds")
+saveRDS(F24_abund_summary, "./Model_Objects/F24_625segHeli_HDS_AbundEst.rds")
 
 # -------------------------------------------------------
 #                     Winter 2025
@@ -867,7 +867,7 @@ W25_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W25_fm1 <- spDS(abund.formula = ~ 1,  
+W25_fm1 <- spDS(abund.formula = ~ ~ as.factor(woody_lrgPInx),     
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = W25_spA_dat,
                 family = 'Poisson',
@@ -932,10 +932,10 @@ W25_dens_vec <-  (W25_all_site_ests / (sum(transect_effort$Area_ac)))
 W25_abund_vec <- W25_dens_vec * 2710
 
 # Compute summary statistics
-W25_abund_summary <- data.frame(Model = "Heli 1250seg HDS", 
+W25_abund_summary <- data.frame(Model = "Heli 625seg HDS", 
                                 Season = "Winter 2025",
                                 Data = "Helicopter",
-                                Season_Model = "W25 Heli 1250seg HDS",
+                                Season_Model = "W25 Heli 625seg HDS",
                                 N = mean(W25_abund_vec, na.rm = TRUE),  
                                 LCI = as.numeric(quantile(W25_abund_vec, probs = 0.025, na.rm = TRUE)), 
                                 UCI = as.numeric(quantile(W25_abund_vec, probs = 0.975, na.rm = TRUE)) 
@@ -945,6 +945,6 @@ W25_abund_summary <- data.frame(Model = "Heli 1250seg HDS",
 print(W25_abund_summary)
 
 # Export abundance estimates
-saveRDS(W25_abund_summary, "./Model_Objects/W25_1250segHeli_HDS_AbundEst.rds")
+saveRDS(W25_abund_summary, "./Model_Objects/W25_625segHeli_HDS_AbundEst.rds")
 
 # ----------------------------- End of Script -----------------------------
