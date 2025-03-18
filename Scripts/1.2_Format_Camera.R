@@ -130,8 +130,8 @@ head(F24_cams)
 F23_deploy <- F23_cams %>%
   group_by(site_number) %>%   
   summarize(
-    min_time = min(start_time, na.rm = TRUE),
-    max_time = max(end_time, na.rm = TRUE)
+    deploy_start = min(start_time, na.rm = TRUE),
+    deploy_end = max(end_time, na.rm = TRUE)
   ) %>%
   ungroup()%>%
   mutate(site_number = as.numeric(site_number)) %>%   
@@ -142,8 +142,8 @@ head(F23_deploy)
 W24_deploy <- W24_cams %>%
   group_by(site_number) %>%   
   summarize(
-    min_time = min(start_time, na.rm = TRUE),
-    max_time = max(end_time, na.rm = TRUE)
+    deploy_start = min(start_time, na.rm = TRUE),
+    deploy_end = max(end_time, na.rm = TRUE)
   ) %>%
   ungroup()%>%
   mutate(site_number = as.numeric(site_number)) %>%   
@@ -154,8 +154,8 @@ head(W24_deploy)
 F24_deploy <- F24_cams %>%
   group_by(site_number) %>%   
   summarize(
-    min_time = min(start_time, na.rm = TRUE),
-    max_time = max(end_time, na.rm = TRUE)
+    deploy_start = min(start_time, na.rm = TRUE),
+    deploy_end = max(end_time, na.rm = TRUE)
   ) %>%
   ungroup()%>%
   mutate(site_number = as.numeric(site_number)) %>%   
