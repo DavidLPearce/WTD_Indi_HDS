@@ -36,7 +36,7 @@ Heli_625segDS_est <- readRDS("./Model_Objects/Heli_625segDS_AbundEst.rds")
 
 # HDS Estimates
 Heli_HDS_est <- readRDS("./Model_Objects/Heli_HDS_AbundEst.rds")
-Heli_1250segHDS_est <- readRDS("./Model_Objects/W25_1250segHeli_HDS_AbundEst.rds")
+Heli_1250segHDS_est <- readRDS("./Model_Objects/Heli_1250segHDS_AbundEst.rds")
 Heli_625segHDS_est <- readRDS("./Model_Objects/Heli_625segHDS_AbundEst.rds")
 
 # Camera Estimates
@@ -60,21 +60,21 @@ all_est <- rbind(Heli_DS_est,
                  Heli_HDS_est, 
                  Heli_1250segHDS_est, 
                  Heli_625segHDS_est,
-                  Cam_TTE_est)
+                 Cam_TTE_est)
 
-# # Factor by models **** see levels all_est$Model
-# all_est <- all_est %>%
-#   mutate(Model = factor(Model,
-#                         levels = c(
-#                          "Heli DS",
-#                          "1250seg Heli DS",
-#                          "625seg Heli DS",
-#                          "Heli HDS",
-#                          "Heli 1250seg HDS",
-#                          "Heli 625seg HDS",
-#                          "Cam TTE"
-#                        ))
-#   )
+# Factor by models **** see levels unique(all_est$Model)
+all_est <- all_est %>%
+  mutate(Model = factor(Model,
+                        levels = c(
+                         "Heli DS",
+                         "Heli 1250seg DS",
+                         "Heli 625seg DS",
+                         "Heli HDS",
+                         "Heli 1250seg HDS",
+                         "Heli 625seg HDS",
+                         "Cam TTE"
+                       ))
+  )
 
 # Subset by season
 F23_est <- all_est[which(all_est$Season == "Fall 2023"),]
@@ -91,8 +91,8 @@ W25_est <- all_est[which(all_est$Season == "Winter 2025"),]
 # "#009E73",  # Bluish Green
 col_palette <- c( 
                  "Heli DS" = "#6A3D9A", # Purple
-                 "1250seg Heli DS" = "#E69F00", # Orange
-                 "625seg Heli DS" = "#228B22",  # Forest Green
+                 "Heli 1250seg DS" = "#E69F00", # Orange
+                 "Heli 625seg DS" = "#228B22",  # Forest Green
                  
                  "Heli HDS" = "#1F3A93", # Blue
                  "Heli 1250seg HDS" = "#E41A1C", # Red
@@ -102,20 +102,17 @@ col_palette <- c(
 )   
 
 # Define Custom shape 
-# "Heli CF" = 16, # Solid circle
-# Square for CT TTE = 15
 # X for CT DS
 shape_palette <- c(
-
-  "Heli DS" = 17,  # Triangle for DS
-  "1250seg Heli DS" = 17,  
-  "625seg Heli DS" = 17,  
-  
-  "Heli HDS" = 18,  # Diamond for HDS
-  "Heli 1250seg HDS" = 18, 
-  "Heli 625seg HDS" = 18, 
-  
-  "Cam TTE" = 15 # Square for TTE
+                  "Heli DS" = 17,  # Triangle for DS
+                  "Heli 1250seg DS" = 17,  
+                  "Heli 625seg DS" = 17,  
+                  
+                  "Heli HDS" = 18,  # Diamond for HDS
+                  "Heli 1250seg HDS" = 18, 
+                  "Heli 625seg HDS" = 18, 
+                  
+                  "Cam TTE" = 15 # Square for TTE
 ) 
 
 
@@ -129,7 +126,7 @@ F23_abund_plot <- ggplot(F23_est, aes(x = Model, y = N, color = Model, shape = M
                      y = "Abundance Estimate") +
                 scale_color_manual(values = col_palette) +   
                 scale_shape_manual(values = shape_palette) +    
-                scale_y_continuous(limits = c(0, 1700), breaks = seq(0, 1700, by = 100)) +    
+                scale_y_continuous(limits = c(0, 1200), breaks = seq(0, 1200, by = 100)) +    
                 theme(
                   legend.position = "none", 
                   axis.text.x = element_text(size = 12, angle = 45, hjust = 1),   
@@ -161,7 +158,7 @@ W24_abund_plot <- ggplot(W24_est, aes(x = Model, y = N, color = Model, shape = M
                              y = "Abundance Estimate") +
                         scale_color_manual(values = col_palette) +   
                         scale_shape_manual(values = shape_palette) +   
-                        scale_y_continuous(limits = c(0, 1100), breaks = seq(0, 1100, by = 100)) +   
+                        scale_y_continuous(limits = c(0, 700), breaks = seq(0, 700, by = 100)) +   
                         theme(
                           legend.position = "none", 
                           axis.text.x = element_text(size = 12, angle = 45, hjust = 1),   
@@ -226,7 +223,7 @@ W25_abund_plot <- ggplot(W25_est, aes(x = Model, y = N, color = Model, shape = M
                              y = "Abundance Estimate") +
                         scale_color_manual(values = col_palette) +   
                         scale_shape_manual(values = shape_palette) +   
-                        scale_y_continuous(limits = c(100, 900), breaks = seq(100, 900, by = 100)) +   
+                        scale_y_continuous(limits = c(100, 700), breaks = seq(100, 700, by = 100)) +   
                         theme(
                           legend.position = "none", 
                           axis.text.x = element_text(size = 12, angle = 45, hjust = 1),   
