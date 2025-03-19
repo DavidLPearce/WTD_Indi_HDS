@@ -572,7 +572,7 @@ F23_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F23_fm1 <- spDS(abund.formula = ~ as.factor(woody_lrgPInx),  
+F23_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),  
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = F23_spA_dat,
                 family = 'Poisson',
@@ -638,7 +638,7 @@ F23_abund_vec <- F23_dens_vec * 2710
 
 # Compute summary statistics
 F23_abund_summary <- data.frame(Model = "Heli 625seg HDS", 
-                                Season = "Fall 625seg 2023",
+                                Season = "Fall 2023",
                                 Data = "Helicopter",
                                 Season_Model = "F23 Heli 625seg HDS",
                                 N = mean(F23_abund_vec, na.rm = TRUE),  
@@ -667,7 +667,7 @@ W24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W24_fm1 <- spDS(abund.formula = ~ as.factor(woody_lrgPInx),      
+W24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),      
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = W24_spA_dat,
                 family = 'Poisson',
@@ -762,7 +762,7 @@ F24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F24_fm1 <- spDS(abund.formula = ~ ~ as.factor(woody_lrgPInx),    
+F24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),    
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = F24_spA_dat,
                 family = 'Poisson',
@@ -857,7 +857,7 @@ W25_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W25_fm1 <- spDS(abund.formula = ~ ~ as.factor(woody_lrgPInx),     
+W25_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx),     
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|segID),
                 data = W25_spA_dat,
                 family = 'Poisson',

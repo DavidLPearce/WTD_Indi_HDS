@@ -596,7 +596,7 @@ F23_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F23_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
+F23_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx), 
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = F23_spA_dat,
                 family = 'Poisson',
@@ -691,7 +691,7 @@ W24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W24_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
+W24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx), 
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = W24_spA_dat,
                 family = 'Poisson',
@@ -786,7 +786,7 @@ F24_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-F24_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
+F24_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx), 
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = F24_spA_dat,
                 family = 'Poisson',
@@ -881,7 +881,7 @@ W25_inits <- list(beta = 0,
 # ----------------------
 # Fit Model
 # ----------------------
-W25_fm1 <- spDS(abund.formula = ~ scale(herb_Pdens),
+W25_fm1 <- spDS(abund.formula = ~ scale(woody_lrgPInx), 
                 det.formula = ~ mnGS + as.factor(SurveyTime) + scale(woody_AggInx) + (1|SiteID), 
                 data = W25_spA_dat,
                 family = 'Poisson',
